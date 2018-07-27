@@ -5,11 +5,7 @@ const bodyParser = require ('body-parser')
 const router = Express.Router();
 
 router.get('/', (req, res) => {
-    Asset.find({}).then( data => {
-      responseClient(res, 200, 0, 'Get request successfully', data);
-    } , (e) => {
-      responseClient(res);
-    });
+    responseClient(res, 200, 0, 'Api server is up ', data);
 });
 
 // get all Asset
