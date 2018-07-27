@@ -22,8 +22,6 @@ app.use(bodyParser.json());
 
 app.use('/user', require('./user'));
 
-app.get('/', (req, res) =>  responseClient(res, 200, 0, 'api server is up', 'Welcome!') )
-
 app.use('/admin', require('./admin'));
 
 mongoose.Promise = require('bluebird');
