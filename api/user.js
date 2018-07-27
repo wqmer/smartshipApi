@@ -4,10 +4,6 @@ const Asset = require ('../mongoDB/models')
 const bodyParser = require ('body-parser')
 const router = Express.Router();
 
-router.get('/', (req, res) => {
-    responseClient(res, 200, 0, 'Api server is up ', data);
-});
-
 // get all Asset
 router.get('/getAllAsset', (req, res) => {
     Asset.find({}).then( data => {
