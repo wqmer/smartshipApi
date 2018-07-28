@@ -23,7 +23,6 @@ router.get('/getAsset/:id', (req, res) => {
     });
 });
   
-
 // deposit
 router.post('/deposit', (req, res) => {
      const coinType = req.body.name ;
@@ -55,7 +54,6 @@ router.post('/withdraw', (req, res) => {
 // update one currency
 // app.patch('/updateCurrency/:id', (req, res) => {
 //   var id = req.params.id;
-
 
 //  Currency.findByIdAndUpdate(id, req.body, {new: true}).then((currency) => {
 //     if (!currency) {
