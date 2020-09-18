@@ -48,9 +48,18 @@ var order = new mongoose.Schema({
         length: { type: SchemaTypes.Double },
         width: { type: SchemaTypes.Double },
         height: { type: SchemaTypes.Double },
-        phone_number: String,
         tracking_number: String,
         transfer_number: String,
+        isParcels:Boolean,
+        parcelList:[{
+            sku: String,
+            weight: { type: SchemaTypes.Double },
+            length: { type: SchemaTypes.Double },
+            width: { type: SchemaTypes.Double },
+            height: { type: SchemaTypes.Double },
+            tracking_number: String,
+            transfer_number: String,
+        }]
     },
     postage: {
         estimate_amount: { type: SchemaTypes.Double },

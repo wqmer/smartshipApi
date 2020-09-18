@@ -12,6 +12,7 @@ const rp = require('request-promise');
 const mock_submit_order = require('../../services/shipping_module/carrier/fedEx/mock')
 const chukoula = require('../../services/shipping_module/third_party_api/chukoula')
 const PDFMerger = require('pdf-merger-js');
+const ServiceClass = require('../../services/shipping_module/carrier');
 
 
 const rrad = require('rrad')
@@ -138,7 +139,7 @@ router.use((req, res, next) => {
 //获取用户信息
 router.get('/userInfo', (req, res) => {
     User.findOne({
-        user_id: req.session.user_info.user_id 
+        user_id: req.session.user_info.user_id
     }).then(result => {
         if (result) {
             //登录成功
@@ -527,6 +528,11 @@ router.post('/get_service_rate', (req, res) => {
         match: { $or: [{ user_id: req.session.user_info.user_id }, { type: "default" }] },
     })
         .then(result => {
+
+
+
+
+
             if (result.length > 0) {
                 responseClient(res, 200, 0, 'find service successfully', result)
             } else {
@@ -534,6 +540,65 @@ router.post('/get_service_rate', (req, res) => {
             }
         })
         .catch(error => responseClient(res))
+})
+
+//预估邮费by包裹信息
+router.post('/get_rate', async (req, res) => {
+    try {
+        let shipment = req.body
+        //获取所有对此用户开放的服务
+        let services = await Service
+            .find({ status: "activated", $or: [{ auth_group: { $in: req.session.user_info.user_id } }, { type: "default" }], })
+            .populate({
+                path: 'rate',
+                match: { $or: [{ user_id: req.session.user_info.user_id }, { type: "default" }] },
+            })
+        //用重量过滤服务，如果多件货物，只要单个货物，不在服务重量范围，即不可用
+        const parecels_weight = shipment.parcel_information.parcel_list.map(item => parseFloat(item.pack_info.weight))
+        const is_in_range = function (weight_array, service_min_weight, service_max_weight) {
+            return weight_array.every(element => element >= service_min_weight && element <= service_max_weight)
+        }
+        let serviceAvail = services.filter(item => is_in_range(parecels_weight, item.ship_parameters.weight_min, item.ship_parameters.weight_max))
+        //获得服务后调用对应类方法的rate 方法返回报价
+        if (serviceAvail.length > 0) {
+            let promises = serviceAvail.map(item => {
+                const Service = ServiceClass(item.agent)
+                const service = new Service(item.api_parameters.account_information, item.api_parameters.request_url, item.rate, item.carrier, item.mail_class , item.asset)
+                return service.rate(shipment)
+            })
+            const response = await Promise.all(promises)
+            responseClient(res, 200, 0, 'rate successfully', response)
+        } else {
+            responseClient(res, 200, 0, 'no service avaiable')
+        }
+    } catch (error) {
+        console.log(error)
+        responseClient(res)
+    }
+
+    // Service.find({
+    //     status: "activated",
+    //     $or: [{ auth_group: { $in: req.session.user_info.user_id } }, { type: "default" }],
+    // }).populate({
+    //     path: 'rate',
+    //     match: { $or: [{ user_id: req.session.user_info.user_id }, { type: "default" }] },
+    // })
+    //     .then(result => {
+    //         let services
+    //         if (result.length > 0) {
+    //             services = result.filter(item => {
+    //                 if (weight <= item.ship_parameters.weight_max && weight >= item.ship_parameters.weight_min) {
+    //                     const ServiceClass = ServiceClass(item.agent)
+    //                     const service = new ServiceClass(item.api_parameters.account_information, IbSandboxEndpoint, item.rate, item.carrier, item.mail_class)
+    //                     return AgentClass.rate(req.body)
+    //                 }
+    //             })
+    //             responseClient(res, 200, 0, 'rate successfully', result)
+    //         } else {
+    //             responseClient(res, 200, 0, 'no service avaiable')
+    //         }
+    //     })
+    //     .catch(error => responseClient(res))
 })
 
 //获取当前客户可用服务渠道

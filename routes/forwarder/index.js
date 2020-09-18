@@ -131,10 +131,12 @@ router.use((req, res, next) => {
 
 //添加服务
 router.post('/add_service', async (req, res) => {
-    let { name, logo_url, is_api_rate, description, rate, carrier }
+    let { asset, rate, agent, carrier , mail_class ,ship_parameters , api_parameters}
         = req.body
 
-    if (!name) responseClient(res, 200, 1, '请输入渠道名字')
+    console.log(req.body)
+
+    // if (!name) responseClient(res, 200, 1, '请输入渠道名字')
     try {
         if (rate) {
             let tempRate = new Rate({ ...rate })
@@ -143,14 +145,19 @@ router.post('/add_service', async (req, res) => {
         }
 
         let tempService = new Service({
-            name,
-            logo_url,
-            is_api_rate,
-            description,
+            // ...req.body,
+            asset : {
+                ...asset,
+                code: "s" + shortid.generate(),
+            },
+            api_parameters,
             rate,
             carrier,
-            forwarder: req.session.forwarder_info.forwarder_name,
-            code: "s" + shortid.generate(),
+            agent,
+            mail_class,
+            ship_parameters,
+            forwarder: req.session.forwarder_info.forwarder_object_id,
+         
         });
         let result = await tempService.save()
         result ? responseClient(res, 200, 0, '添加成功', result) : responseClient(res, 200, 1, '添加失败', result)

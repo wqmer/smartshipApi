@@ -62,7 +62,13 @@ const PORT = process.env.PORT || 8000;
 //   console.log(`Listening on port`, PORT);
 // });
 const channel = 'orders';
-
+const pusher = new Pusher({
+  appId: "1047947",
+  key: "a02e0dd4b8d8317e5b47",
+  secret: "ab2a8045f187605daccd",
+  cluster: "us3",
+  encrypted: true,
+});
 
 //监听数据库变化
 db.once('open', () => {

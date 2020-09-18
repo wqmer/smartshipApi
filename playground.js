@@ -4,6 +4,7 @@ const agentTemplate = require('./config/shppingAgent')
 const mongoose = require('mongoose');
 const moment = require('moment');
 
+
 var Fakerator = require("fakerator");
 var fakerator = Fakerator();
 var name = fakerator.names.name();
@@ -24,62 +25,162 @@ var parsed = parser.parseLocation('2850 kelvin ave 2850 Irvine CA 92614 Irvine C
 
 
 
-const sampleJsonReauest =
-{
+const serviceClass = require('./services/shipping_module/carrier');
+
+const myShipment = {
+    "request_id": "Huodaios",
+    "from_address": {
+        "company_name": "Redbrick247",
+        "first_name": "Jane",
+        "last_name": "Wilson",
+        "line1": "247 High St",
+        "city": "Palo Alto",
+        "state_province": "CA",
+        "postal_code": "94301",
+        "phone_number": "6503915169",
+        "sms": "SMS4440404",
+        "email": "harry@redbrick247.com",
+        "country_code": "US"
+    },
+    "to_address": {
+        "company_name": "RedBrick247",
+        "first_name": "John",
+        "last_name": "Doe",
+        "line1": "4100 Orme St",
+        "city": "Palo Alto",
+        "state_province": "CA",
+        "postal_code": "94306",
+        "phone_number": "8884445555",
+        "country_code": "US"
+    },
+    "weight": 0.5,
+    "weight_unit": "lb",
+    "image_format": "png",
+    "image_resolution": 300,
     "usps": {
-        "event_code": "80",
-        "manifest_number": "9xxxxxxxxxxxxxxx",   // if possbile , tracking nubmer array is more flexiable for us 
-        "event_zip5": "08xxx",
-        "schedule_time": "15"                    // 15 hours later 。 or timestamp is a better format here.
-    }                                            // If missing , fired this event immediately 
+        "shape": "Parcel",
+        "mail_class": "Priority",
+        "image_size": "4x6"
+    }
 }
+
+
+const newShipment = {
+    sender_information: {
+        sender_add1: "2850 kelvin ave , apt 123",
+        sender_add2: undefined,
+        sender_city: 'Irvine',
+        sender_company: 'SmartshipLLC',
+        sender_name: "QIMIN",
+        sender_phone_number: '2155880271',
+        sender_state: "CA",
+        sender_zip_code: "92614",
+    },
+    receipant_information: {
+        receipant_add1: "50 Deerfield Ave",
+        receipant_add2: undefined,
+        receipant_city: 'Irvine',
+        receipant_company: undefined,
+        receipant_name: "Kimi",
+        receipant_phone_number: '2155880271',
+        receipant_state: 'CA',
+        receipant_zip_code: '92606',
+    },
+
+    parcel_information: {
+        parcel_list: [
+            {
+                key: "first_pak",
+                pack_info: {
+                    height: "5",
+                    length: "2",
+                    order_id: "1",
+                    reference: "1",
+                    same_pack: "1",
+                    weight: "1",
+                    width: "3",
+                }
+            },
+            {          
+                key: "123_123",
+                pack_info: {
+                    height: "5",
+                    length: "2",
+                    order_id: "1",
+                    reference: "1",
+                    same_pack: "1",
+                    weight: "1",
+                    width: "3",
+                }
+            }
+        ]
+    }
+}
+
+const account = {
+    username: 'wqmer11532@gmail.com',
+    password: '`198811532Ww'
+}
+
+const IbSandboxEndpoint = require('./config/dev').IBSandBoxEndpoint
+
+const Service = serviceClass('InternationalBridge')
+
+const service = new Service(account, IbSandboxEndpoint, 'default', 'usps', 'FirstClass')
+
+const myfun = async () => {
+    let response = await service.rate(newShipment)
+    console.log(response)
+}
+
+myfun()
 
 // "schedule_time": {
 //     "pick_up_event":  12,   // automatcially generate pick_up_event 12 housr later after this event call 
 //     "arrive_event":  16,    // automatcially generate arrive_event 16 housr later after this event call 
 //     "departing":  18        // automatcially generate departing 18 housr later after this event call 
 // }
-const Myrate = [
-    [2.54, 2.54, 2.55, 2.57, 2.63, 2.71, 2.83, 2.94],
-    [2.90, 2.90, 2.92, 2.94, 2.99, 3.07, 3.18, 3.32],
-    [3.55, 3.55, 3.59, 3.61, 3.69, 3.78, 3.90, 4.03],
-    [4.57, 4.57, 4.57, 4.61, 4.74, 4.86, 4.99, 5.13],
-]
+// const Myrate = [
+//     [2.54, 2.54, 2.55, 2.57, 2.63, 2.71, 2.83, 2.94],
+//     [2.90, 2.90, 2.92, 2.94, 2.99, 3.07, 3.18, 3.32],
+//     [3.55, 3.55, 3.59, 3.61, 3.69, 3.78, 3.90, 4.03],
+//     [4.57, 4.57, 4.57, 4.61, 4.74, 4.86, 4.99, 5.13],
+// ]
 // const data = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125] //  平均
 // const data = [0.2, 0.2, 0.1, 0.1, 0.1, 0.1, 0.15, 0.05] //  1， 2 区多
 // const data = [0.05, 0.05, 0.2, 0.1, 0.1, 0.1, 0.2, 0.2]  //  7， 8 区多
 
 
 // const data = [0.25, 0.15, 0.15, 0.15, 0.05, 0.05, 0.1, 0.1]  //  美西，美东分仓
-const data = [0.4, 0.1, 0.1, 0.4, 0, 0, 0, 0]  // 最小区域做法
-const expect = 0.02
+// const data = [0.4, 0.1, 0.1, 0.4, 0, 0, 0, 0]  // 最小区域做法
+// const expect = 0.02
 
-const title = [ 
-    {title :'1-4oz'},
-    {title :'5-8oz'},
-    {title :'9-11oz'},
-    {title :'12-15.99oz'},
-]
-const calculate = (weightRange, rate, arrayZone, profit) => {
-    let a = 0
-    let b = 0
-    for (let y = 0; y < arrayZone.length; y++) {
-        b = b + rate[weightRange][y] * arrayZone[y]
-        //  console.log(b)
-    }
-    return b / (1 - profit)
-}
+// const title = [ 
+//     {title :'1-4oz'},
+//     {title :'5-8oz'},
+//     {title :'9-11oz'},
+//     {title :'12-15.99oz'},
+// ]
+// const calculate = (weightRange, rate, arrayZone, profit) => {
+//     let a = 0
+//     let b = 0
+//     for (let y = 0; y < arrayZone.length; y++) {
+//         b = b + rate[weightRange][y] * arrayZone[y]
+//         //  console.log(b)
+//     }
+//     return b / (1 - profit)
+// }
 
-console.log('基于当前成本价格，如下包裹数量分布概率： ')
-for (let y = 0 ; y <data.length ; y++){
-   let string = y+1 + '区的包裹占总量 ' + '% ' + `${data[y]}`*100 + ' , '
-    console.log(string)
-}
-console.log(`如下设置不分区价格，可以保证 `  +  '%' + ` ${expect}`*100 + ' 利润')
-for (let y = 0 ; y < Myrate.length ; y++){ 
-    // console.log(title[y])
-    console.log(title[y].title +  " : "  + parseFloat(calculate(y , Myrate, data, expect)).toPrecision(3) )
-}
+// console.log('基于当前成本价格，如下包裹数量分布概率： ')
+// for (let y = 0 ; y <data.length ; y++){
+//    let string = y+1 + '区的包裹占总量 ' + '% ' + `${data[y]}`*100 + ' , '
+//     console.log(string)
+// }
+// console.log(`如下设置不分区价格，可以保证 `  +  '%' + ` ${expect}`*100 + ' 利润')
+// for (let y = 0 ; y < Myrate.length ; y++){ 
+//     // console.log(title[y])
+//     console.log(title[y].title +  " : "  + parseFloat(calculate(y , Myrate, data, expect)).toPrecision(3) )
+// }
 
 
 
