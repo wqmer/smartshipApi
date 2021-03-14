@@ -15,6 +15,8 @@ var service = new mongoose.Schema({
     ship_parameters: {
         weight_min: Number,
         weight_max: Number,
+        weight_unit:String,
+        length_unit:String,
         delivery_days_min: Number,
         delivery_days_max: Number,
         dimension_weight_factor: Number,

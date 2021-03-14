@@ -1,10 +1,13 @@
-const Service = require('./model.js')
-const axios = require('axios');
-const SandboxEndPoint = require('../../../config/dev.js').IBSandBoxEndpoint;
-const usps = require("./usps")
+const Service = require("./model.js");
+const axios = require("axios");
+const SandboxEndPoint = require("../../../config/dev.js").IBSandBoxEndpoint;
+const usps = require("./usps");
+const InternationalBridge = require("./InternationalBridge");
+const DeftShip = require("./DeftShip");
+const UPS = require("./UPS");
 
+const classes = { ...InternationalBridge, ...DeftShip, ...UPS };
 
-const classes = {...usps};
-
-
-module.exports = function(name) { return classes[name]; }
+module.exports = function (name) {
+  return classes[name];
+};

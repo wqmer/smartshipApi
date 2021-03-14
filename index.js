@@ -9,12 +9,19 @@ const keys = require('./config/keys');
 const config = require('./config/dev');
 const Pusher = require('pusher');
 
+var https = require('https');
+https.globalAgent.keepAlive = true;
+https.globalAgent.maxSockets = 5000
 
+var http = require('http');
+http.globalAgent.keepAlive = true;
+http.globalAgent.maxSockets =5000
 
 
 mongoose.Promise = require('bluebird');
+
 //connect db
-mongoose.connect(config.mongoURI || 'mongodb://localhost:27017/ship', { useNewUrlParser: true }, function (err) {
+mongoose.connect(config.mongoURI || 'mongodb://localhost:27017/ship', {  useUnifiedTopology: true, useNewUrlParser: true , poolSize:500 }, function (err) {
   if (err) { console.log(err, "Database disconnected"); return; }
   console.log('Database connected successfully');
 })

@@ -9,7 +9,6 @@ const { Schema } = mongoose;
 
 var SchemaTypes = mongoose.Schema.Types;
 var order = new mongoose.Schema({
-    service_class: { type: String, default: 'Domestic_ship' },
     order_id: {
         type: String,
         unique: "order_id must be unique !"
@@ -18,8 +17,21 @@ var order = new mongoose.Schema({
         type: String,
         unique: "customer_order_id must be unique !"
     },
+    type:{type:String, default:'Domestic_ship'},
     status: { type: String, default: 'draft' },
     server_status: { type: String, default: 'default' },
+    service: {    
+        carrier: String,
+        agent:String,  
+        mail_class:String,
+        asset: {
+            name: String,
+            logo_url: String,
+            description: String, 
+            code: String,
+        },  
+    },
+
     sender: {
         Company: String,
         sender_name: String,
@@ -42,30 +54,31 @@ var order = new mongoose.Schema({
         country: String,
         phone_number: String
     },
+  
     parcel: {
+        label: String,
         sku: String,
         weight: { type: SchemaTypes.Double },
-        length: { type: SchemaTypes.Double },
-        width: { type: SchemaTypes.Double },
-        height: { type: SchemaTypes.Double },
-        tracking_number: String,
-        transfer_number: String,
         isParcels:Boolean,
         parcelList:[{
+            label: [String],
             sku: String,
             weight: { type: SchemaTypes.Double },
             length: { type: SchemaTypes.Double },
             width: { type: SchemaTypes.Double },
             height: { type: SchemaTypes.Double },
-            tracking_number: String,
+            tracking_numbers: [String],
             transfer_number: String,
+            postage :{
+                billing_amount: Object,
+            },
         }]
     },
     postage: {
+        zone :{type : Number},
         estimate_amount: { type: SchemaTypes.Double },
-        billing_amount: Number,
+        billing_amount: Object,
     },
-    carrier: String,
     user : {
         type: Schema.Types.ObjectId, 
         ref: 'User'
@@ -74,14 +87,6 @@ var order = new mongoose.Schema({
         type: Schema.Types.ObjectId, 
         ref: 'Forwarder'
     },  
-    // forwarder_id: { type: Number },
-
-    // user_id: { type: Number  },
-    // user_object_id: {
-    //     type: Schema.Types.ObjectId, 
-    //     ref: 'User'
-    // },   
-
     created_at: { type: String, default: () => moment().format('YYYY-MM-DD HH:mm') },
 }, { versionKey: false });
 order.plugin(mongoosePaginate);

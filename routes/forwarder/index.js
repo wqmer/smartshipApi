@@ -20,6 +20,39 @@ const {
 
 const myEmitter = new EventEmitter();
 
+//测试性临时服务 ----------------------------获取IB运单记录-----------------------------
+router.get('/IB', async (req, res) => {
+    let params = req.body
+    const IB_PROD_ENDPOINT = require('../../config/prod').IBProdEndpoint
+    const ACCOUNT = {
+        username: 'wqmer11532@gmail.com',
+        password: '`198811532Ww'
+    }
+    const serviceClass = require('../../services/shipping_module/carrier');
+    const Service = serviceClass('InternationalBridge')
+    const service = new Service(ACCOUNT, IB_PROD_ENDPOINT)
+
+    try {
+        getDataNeeded = (item) => {
+            let { request_id, weight, pricing_weight, total_amount, status, postmark_date, usps } = item
+            let tracking = usps.tracking_numbers[0]
+            return ({ request_id, weight, pricing_weight, total_amount, status, postmark_date, tracking_numbers: tracking })
+        }
+        let response = await service.index(params)
+
+        if (response.status == 200) {
+            if (response.data.length > 0) {
+                let myData = response.data.map(item => getDataNeeded(item))
+                responseClient(res, response.status, 0, 'fetch data success !', myData);
+            } else {
+                responseClient(res, response.status, 0, 'fetch data successfully, but no data !',);
+            }
+        }
+    } catch (error) {
+        responseClient(res);
+    }
+})
+
 //注册
 router.post('/register', (req, res) => {
     let {
@@ -131,7 +164,7 @@ router.use((req, res, next) => {
 
 //添加服务
 router.post('/add_service', async (req, res) => {
-    let { asset, rate, agent, carrier , mail_class ,ship_parameters , api_parameters}
+    let { asset, rate, agent, carrier, mail_class, ship_parameters, api_parameters }
         = req.body
 
     console.log(req.body)
@@ -146,7 +179,7 @@ router.post('/add_service', async (req, res) => {
 
         let tempService = new Service({
             // ...req.body,
-            asset : {
+            asset: {
                 ...asset,
                 code: "s" + shortid.generate(),
             },
@@ -157,10 +190,10 @@ router.post('/add_service', async (req, res) => {
             mail_class,
             ship_parameters,
             forwarder: req.session.forwarder_info.forwarder_object_id,
-         
+
         });
         let result = await tempService.save()
-        result ? responseClient(res, 200, 0, '添加成功', result) : responseClient(res, 200, 1, '添加失败', result)
+        result ? responseClient(res, 200, 0, '添加成功', result) : responseClient(res, 401, 1, '添加失败', result)
     } catch (error) {
         console.log(error)
         responseClient(res);
@@ -273,7 +306,7 @@ router.post('/update_user', async (req, res) => {
     }, query)
 
     try {
-        result.n == 1 ? responseClient(res, 200, 0, '修改成功', ) : responseClient(res, 200, 1, '修改失败', )
+        result.n == 1 ? responseClient(res, 200, 0, '修改成功',) : responseClient(res, 200, 1, '修改失败',)
     } catch (error) {
         console.log(error)
         responseClient(res);
@@ -376,5 +409,9 @@ router.get('/event', async (req, res) => {
         // res.end();
     });
 })
+
+
+
+
 
 module.exports = router

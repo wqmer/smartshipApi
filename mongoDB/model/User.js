@@ -27,8 +27,6 @@ var user = new mongoose.Schema({
     forwarder: { type: Schema.Types.ObjectId, ref: 'Forwarder' },
     type: { type: String, default: 'regular' },
     service: [{ type: Schema.Types.ObjectId, ref: 'Service' }],
-    address_book: [{ type: String }],
-    deposit_record: [{ amount: { type: String }, date: { type: Date } }],
     tracking_watchlist: [{ type: String }]
 }, { versionKey: false });
 user.plugin(AutoIncrement, {
