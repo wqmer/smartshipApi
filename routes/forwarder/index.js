@@ -145,6 +145,7 @@ router.post('/login', (req, res) => {
     })
 });
 
+//logout
 router.get('/logout', (req, res) => {
     try {
         req.session.destroy();
@@ -240,7 +241,7 @@ router.post('/get_users', async (req, res) => {
 
     const query = _.pickBy({
         // "$text":text,
-        forwarder: req.session.forwarder_info.forwarder_object_id,
+        // forwarder: req.session.forwarder_info.forwarder_object_id,
         status,
         ...filter
     }, _.identity);
@@ -333,7 +334,7 @@ router.post('/get_orders', async (req, res) => {
     //设置 pignate 的query ，此处先过滤空数据
     const query = _.pickBy({
         // "$text":text,
-        forwarder: req.session.forwarder_info.forwarder_object_id,
+        // forwarder: req.session.forwarder_info.forwarder_object_id,
         status,
         ...filter
     }, _.identity);
