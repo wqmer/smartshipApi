@@ -240,6 +240,7 @@ class UPS extends Service {
     let shipClass = {};
     let myShipment = {};
     let requestTitle = type == "rate" ? "RateRequest" : "ShipmentRequest";
+    
     let paymentMethod =
       this.mailClass === "GROUND FREIGHT"
         ? {
