@@ -1,26 +1,26 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const { Schema } = mongoose;
 var rate = new mongoose.Schema({
-    type:{type:String,default:"default"},
-    user_id: {
-        type: Number,
-        ref: 'User'
+  type: { type: String, default: "default" },
+  user_id: { type: Schema.Types.ObjectId, ref: "User" },
+  auth_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  base_zone: {
+    one: [Number],
+    two: [Number],
+    three: [Number],
+    four: [Number],
+    five: [Number],
+    six: [Number],
+    eight: [Number],
+    nine: [Number],
+    extra: [Number],
+  },
+  surcharge: [
+    {
+      name: String,
+      amount: String,
     },
-    base_zone: {
-        one: [Number],
-        two: [Number],
-        three: [Number],
-        four: [Number],
-        five: [Number],
-        six: [Number],
-        eight: [Number],
-        nine: [Number],
-        extra: [Number],
-    },
-    surcharge: [{
-        name: String,
-        amount: String
-    }]
+  ],
 });
 
-module.exports = mongoose.model('Rate', rate);
+module.exports = mongoose.model("Rate", rate);

@@ -1,4 +1,4 @@
-class Service {
+class CarrierClass {
   constructor(account, type, apiEndPoint, dicount) {
     this.account = account;
     this.apiEndPoint = apiEndPoint;
@@ -6,7 +6,7 @@ class Service {
     this.dicount = dicount;
   }
 
-  getConvertFactor = (CURRENT_UNIT, TARGET_UNIT) => {
+getConvertFactor = (CURRENT_UNIT, TARGET_UNIT) => {
     let factor;
     switch (true) {
       case CURRENT_UNIT == "cm" && TARGET_UNIT == "in":
@@ -70,4 +70,4 @@ class Service {
   // }
 }
 
-module.exports = Service;
+module.exports = CarrierClass;

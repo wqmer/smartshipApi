@@ -1,4 +1,4 @@
-const Service = require("../model.js");
+const CarrierClass = require("../model.js");
 const axios = require("axios");
 const SandboxEndPoint = require("../../../../config/dev.js").IBSandBoxEndpoint;
 var Promise = require("bluebird");
@@ -7,7 +7,7 @@ var ImageUpload = require("../../../AWS/imageUpload");
 var ImageUploadClusterMode = require("./Cluster/master");
 const util = require("util");
 
-class UPS extends Service {
+class UPS extends CarrierClass {
   constructor(account, apiEndPoint, discount, carrier, mailClass, asset = {}) {
     super();
     this.account = account;
@@ -52,17 +52,47 @@ class UPS extends Service {
 
   getServiceCode = () => {
     let code;
-    switch (this.mailClass) {
-      case "GROUND":
+    switch (this.mailClass.toLowerCase()) {
+      case "ground":
         code = "03";
         break;
-      case "GROUND FREIGHT":
+      case "ground freight":
         code = "03";
+        break;
+      case "next day air":
+        code = "01";
+        break;
+      case "2nd day air":
+        code = "02";
         break;
       default:
         code = "03";
     }
     return code;
+
+    // 01 = Next Day Air
+    // 02 = 2nd Day Air
+    // 03 = Ground
+    // 07 = Express
+    // 08 = Expedited
+    // 11 = UPS Standard
+    // 12 = 3 Day Select
+    // 13 = Next Day Air Saver
+    // 14 = UPS Next Day Air® Early
+    // 54 = Express Plus
+    // 59 = 2nd Day Air A.M.
+    // 65 = UPS Saver
+    // M2 = First Class Mail
+    // M3 = Priority Mail
+    // M4 = Expedited MaiI Innovations
+    // M5 = Priority Mail Innovations
+    // M6 = Economy Mail Innovations
+    // M7 = MaiI Innovations (MI) Returns 70 = UPS Access PointTM Economy 71 = UPS Worldwide Express Freight Midday
+    // 74 = UPS Express®12:00 82 = UPS Today Standard 83 = UPS Today Dedicated Courier
+    // 84 = UPS Today Intercity 85 = UPS Today Express 86 = UPS Today Express Saver
+    // 96 = UPS Worldwide Express Freight.
+    // Note: Only service code 03 is used for Ground Freight Pricing shipments
+    // The following Services are not available to return shipment: 13, 59, 82, 83, 84, 85, 86
   };
 
   calFreightClass = (weight, height, width, length) => {
@@ -110,10 +140,10 @@ class UPS extends Service {
       case (result > 13.5 || result == 13.5) && result < 15:
         freightClass = 77.5;
         break;
-      case (result > 15 || result == 22.5) && result < 22.5:
+      case (result > 15 || result == 15) && result < 22.5:
         freightClass = 70;
         break;
-      case (result > 22.5 || result == 30) && result < 30:
+      case (result > 22.5 || result == 22.5) && result < 30:
         freightClass = 65;
         break;
       case (result > 30 || result == 30) && result < 35:
@@ -136,202 +166,207 @@ class UPS extends Service {
     type = "rate"
   ) {
     // console.log(shipment);
+    try {
+      let convert_value_weight = this.getConvertFactor(
+        shipment.parcel_information.unit_weight,
+        unit_weight_accepted
+      );
+      let convert_value_length = this.getConvertFactor(
+        shipment.parcel_information.unit_length,
+        unit_length_accepted
+      );
+      // console.log(Number(parseFloat(2 * 0.0625).toFixed(2)));
 
-    let convert_value_weight = this.getConvertFactor(
-      shipment.parcel_information.unit_weight,
-      unit_weight_accepted
-    );
-    let convert_value_length = this.getConvertFactor(
-      shipment.parcel_information.unit_length,
-      unit_length_accepted
-    );
-    // console.log(Number(parseFloat(2 * 0.0625).toFixed(2)));
-    // console.log(convert_value_length)
+      //---------此部分为服务商的请求格式-----------------
+      let packagesArray = shipment.parcel_information.parcel_list.map(
+        (item) => {
+          let weight = parseFloat(
+            item.pack_info.weight * convert_value_weight
+          ).toFixed(2);
+          let length = parseFloat(
+            item.pack_info.length * convert_value_length
+          ).toFixed(2);
+          let width = parseFloat(
+            item.pack_info.width * convert_value_length
+          ).toFixed(2);
+          let height = parseFloat(
+            item.pack_info.height * convert_value_length
+          ).toFixed(2);
 
-    //---------此部分为服务商的请求格式-----------------
-    let packagesArray = shipment.parcel_information.parcel_list.map((item) => {
-      let weight = parseFloat(
-        item.pack_info.weight * convert_value_weight
-      ).toFixed(2);
-      let length = parseFloat(
-        item.pack_info.length * convert_value_length
-      ).toFixed(2);
-      let width = parseFloat(
-        item.pack_info.width * convert_value_length
-      ).toFixed(2);
-      let height = parseFloat(
-        item.pack_info.height * convert_value_length
-      ).toFixed(2);
-
-      //   console.log("length is " + length);
-      //   console.log(
-      //     "class is " + this.calFreightClass(weight, height, width, length)
-      //   );
-
-      let shipment_ups = {
-        Commodity: {
-          FreightClass: this.calFreightClass(
-            weight,
-            height,
-            width,
-            length
-          ).toString(),
-        },
-        //FOR RATE
-        PackagingType: {
-          Code: "02",
-          Description: "Package",
-        },
-        //FOR SHIP
-        Packaging: {
-          Code: "02",
-          Description: "Package",
-        },
-
-        ReferenceNumber: [
-          {
-            Value: "test1",
-          },
-          { Value: "test2" },
-        ],
-
-        Dimensions: {
-          UnitOfMeasurement: {
-            Code: "IN",
-          },
-          Length: length,
-          Width: width,
-          Height: height,
-        },
-        PackageWeight: {
-          UnitOfMeasurement: {
-            Code: "LBS",
-          },
-          Weight: weight,
-        },
-        // customer_ship_id: item.key,
-      };
-      return shipment_ups;
-    });
-    // console.log(this.getConvertFactor(shipment.parcel_information.unit_length,unit_length_accepted ))
-    let {
-      sender_name,
-      sender_company,
-      sender_add1,
-      sender_add2,
-      sender_city,
-      sender_zip_code,
-      sender_state,
-      sender_phone_number,
-    } = shipment.sender_information;
-
-    let {
-      receipant_name,
-      receipant_company,
-      receipant_add1,
-      receipant_add2,
-      receipant_city,
-      receipant_zip_code,
-      receipant_state,
-      receipant_phone_number,
-    } = shipment.receipant_information;
-
-    let shipments = [];
-    let shipClass = {};
-    let myShipment = {};
-    let requestTitle = type == "rate" ? "RateRequest" : "ShipmentRequest";
-    
-    let paymentMethod =
-      this.mailClass === "GROUND FREIGHT"
-        ? {
-            FRSPaymentInformation: {
-              Type: {
-                Code: "01",
-              },
-              AccountNumber: this.account.AccountNo,
+          //   console.log("length is " + length);
+          //   console.log(
+          //     "class is " + this.calFreightClass(weight, height, width, length)
+          //   );
+          let shipment_ups = {
+            Commodity: {
+              FreightClass: this.calFreightClass(
+                weight,
+                height,
+                width,
+                length
+              ).toString(),
             },
-          }
-        : {
-            PaymentInformation: {
-              ShipmentCharge: {
-                Type: "01",
-                BillShipper: {
-                  AccountNumber: this.account.AccountNo,
+            //FOR RATE
+            PackagingType: {
+              Code: "02",
+              Description: "Package",
+            },
+            //FOR SHIP
+            Packaging: {
+              Code: "02",
+              Description: "Package",
+            },
+
+            ReferenceNumber: [
+              {
+                Value: "test1",
+              },
+              { Value: "test2" },
+            ],
+
+            Dimensions: {
+              UnitOfMeasurement: {
+                Code: "IN",
+              },
+              Length: length,
+              Width: width,
+              Height: height,
+            },
+            PackageWeight: {
+              UnitOfMeasurement: {
+                Code: "LBS",
+              },
+              Weight: weight,
+            },
+            // customer_ship_id: item.key,
+          };
+          return shipment_ups;
+        }
+      );
+      // console.log(this.getConvertFactor(shipment.parcel_information.unit_length,unit_length_accepted ))
+      let {
+        sender_name,
+        sender_company,
+        sender_add1,
+        sender_add2,
+        sender_city,
+        sender_zip_code,
+        sender_state,
+        sender_phone_number,
+      } = shipment.sender_information;
+
+      let {
+        receipant_name,
+        receipant_company,
+        receipant_add1,
+        receipant_add2,
+        receipant_city,
+        receipant_zip_code,
+        receipant_state,
+        receipant_phone_number,
+      } = shipment.receipant_information;
+
+      let shipments = [];
+      let shipClass = {};
+      let myShipment = {};
+      let requestTitle = type == "rate" ? "RateRequest" : "ShipmentRequest";
+
+      let paymentMethod =
+        this.mailClass.toLowerCase() === "ground freight"
+          ? {
+              FRSPaymentInformation: {
+                Type: {
+                  Code: "01",
+                },
+                AccountNumber: this.account.AccountNo,
+              },
+            }
+          : {
+              PaymentInformation: {
+                ShipmentCharge: {
+                  Type: "01",
+                  BillShipper: {
+                    AccountNumber: this.account.AccountNo,
+                  },
                 },
               },
+            };
+      //------ UPS request format ---------------
+      myShipment[`${requestTitle}`] = {
+        Request: {
+          SubVersion: "1703",
+          TransactionReference: {
+            CustomerContext: "myorder",
+          },
+        },
+        Shipment: {
+          ...paymentMethod,
+          ShipmentServiceOptions: {},
+          ShipmentRatingOptions: {
+            FRSShipmentIndicator:
+              this.mailClass.toLowerCase() === "ground freight"
+                ? "TRUE"
+                : undefined,
+            NegotiatedRatesIndicator: "TRUE",
+            // UserLevelDiscountIndicator: "TRUE",
+            RateChartIndicator: "TRUE",
+          },
+          Shipper: {
+            Name: sender_name,
+            ShipperNumber: this.account.AccountNo,
+            Address: {
+              AddressLine: sender_add1,
+              City: sender_city,
+              StateProvinceCode: sender_state,
+              PostalCode: sender_zip_code,
+              CountryCode: "US",
             },
-          };
-    //------ UPS request format ---------------
-    myShipment[`${requestTitle}`] = {
-      Request: {
-        SubVersion: "1703",
-        TransactionReference: {
-          CustomerContext: "myorder",
-        },
-      },
-      Shipment: {
-        ...paymentMethod,
-        ShipmentServiceOptions: {},
-        ShipmentRatingOptions: {
-          FRSShipmentIndicator:
-            this.mailClass === "GROUND FREIGHT" ? "TRUE" : undefined,
-          NegotiatedRatesIndicator: "TRUE",
-          // UserLevelDiscountIndicator: "TRUE",
-          RateChartIndicator: "TRUE",
-        },
-        Shipper: {
-          Name: sender_name,
-          ShipperNumber: this.account.AccountNo,
-          Address: {
-            AddressLine: sender_add1,
-            City: sender_city,
-            StateProvinceCode: sender_state,
-            PostalCode: sender_zip_code,
-            CountryCode: "US",
           },
-        },
-        ShipTo: {
-          Name: receipant_name,
-          Address: {
-            //   ResidentialAddressIndicator: "",
-            AddressLine: receipant_add1,
-            City: receipant_city,
-            StateProvinceCode: receipant_state,
-            PostalCode: receipant_zip_code,
-            CountryCode: "US",
+          ShipTo: {
+            Name: receipant_name,
+            // CompanyDisplayableName : 'test company',
+            Address: {
+              //   ResidentialAddressIndicator: "",
+              AddressLine: receipant_add1,
+              City: receipant_city,
+              StateProvinceCode: receipant_state,
+              PostalCode: receipant_zip_code,
+              CountryCode: "US",
+            },
           },
-        },
-        ShipFrom: {
-          Name: sender_name,
-          Address: {
-            AddressLine: sender_add1,
-            City: sender_city,
-            StateProvinceCode: sender_state,
-            PostalCode: sender_zip_code,
-            CountryCode: "US",
+          ShipFrom: {
+            Name: sender_name,
+            Address: {
+              AddressLine: sender_add1,
+              City: sender_city,
+              StateProvinceCode: sender_state,
+              PostalCode: sender_zip_code,
+              CountryCode: "US",
+            },
           },
-        },
 
-        Service: {
-          Code: this.getServiceCode(),
-          Description: this.mailClass,
+          Service: {
+            Code: this.getServiceCode(),
+            Description: this.mailClass,
+          },
+          // ShipmentTotalWeight: {
+          //   UnitOfMeasurement: {
+          //     Code: "LBS",
+          //     Description: "Pounds",
+          //   },
+          //   Weight: "3",
+          // },
+          Package: packagesArray,
+          LabelSpecification: {
+            LabelStockSize: { Height: "6" },
+            LabelImageFormat: { Code: "gif" },
+          },
         },
-        // ShipmentTotalWeight: {
-        //   UnitOfMeasurement: {
-        //     Code: "LBS",
-        //     Description: "Pounds",
-        //   },
-        //   Weight: "3",
-        // },
-        Package: packagesArray,
-        LabelSpecification: {
-          LabelStockSize: { Height: "6" },
-          LabelImageFormat: { Code: "gif" },
-        },
-      },
-    };
+      };
+      return myShipment;
+    } catch (error) {}
+
     // console.log(myShipment);
-    return myShipment;
   }
 
   errorMapResopnse(item) {
@@ -342,11 +377,15 @@ class UPS extends Service {
         data: {
           package_key: JSON.parse(item.config.data).package_key,
           order_id: undefined,
+          _id: this.asset._id,
+          agent: "UPS",
+          carrier: this.carrier,
+          mail_class: this.mailClass,
           asset: {
             code: this.asset.code,
             logo_url: this.asset.logo_url,
             description: this.asset.description,
-            name: this.asset.name,
+            name: this.asset.nick_name,
             isDisplayOnly: this.asset.isDisplayOnly,
           },
           // asset is the data form server-side
@@ -379,7 +418,7 @@ class UPS extends Service {
   async handleResonse(item, type = "ship") {
     let response = {};
     let extra;
-    console.log("I got response!");
+    // console.log("I got response!");
     //判断是array 还是 object ，统一返回数组
     const selectArrayOrObject = (input) => {
       let result = Array.isArray(input) ? input : [{ ...input }];
@@ -420,48 +459,64 @@ class UPS extends Service {
             }
           );
 
+          let tracking_array = selectArrayOrObject(payload).map(
+            (e) => e.TrackingNumber
+          );
+
+          let pl =
+            type == "ship"
+              ? await ImageUploadClusterMode(
+                  selectArrayOrObject(payload),
+                  "LabelWorker"
+                )
+              : undefined;
+
           extra =
             type == "ship"
               ? {
-                  //   parcel_list: await Promise.map(
-                  //     selectArrayOrObject(payload),
-                  //     async (item, index) => {
-                  //       //   console.log(item.ShippingLabel.GraphicImage);
-                  //       let url = await ImageUpload(
-                  //         item.ShippingLabel.GraphicImage,
-                  //         item.TrackingNumber,
-                  //         "jpg",
-                  //         true,
-                  //         true
-                  //       );
-                  //       let obj = {
-                  //         label: [url],
-                  //         tracking_numbers: [item.TrackingNumber],
-                  //         weight: item.BillingWeight,
-                  //         postage: {
-                  //           billing_amount: {
-                  //             baseCharges: item.BaseServiceCharge.MonetaryValue,
-                  //             surCharges: item.ItemizedCharges,
-                  //           },
+                  // parcel_list: await Promise.map(
+                  //   selectArrayOrObject(payload),
+                  //   async (item, index) => {
+                  //     //   console.log(item.ShippingLabel.GraphicImage);
+                  //     let url = await ImageUpload(
+                  //       item.ShippingLabel.GraphicImage,
+                  //       item.TrackingNumber,
+                  //       "jpg",
+                  //       false,
+                  //       false
+                  //     );
+                  //     let obj = {
+                  //       label: [url],
+                  //       tracking_numbers: [item.TrackingNumber],
+                  //       weight: item.BillingWeight,
+                  //       postage: {
+                  //         billing_amount: {
+                  //           baseCharges: item.BaseServiceCharge.MonetaryValue,
+                  //           surCharges: item.ItemizedCharges,
                   //         },
-                  //       };
-                  //       //   console.log(index + ' finished !')
-                  //       return obj;
-                  //     }
-                  //   ),
-                  parcel_list: await ImageUploadClusterMode(
-                    selectArrayOrObject(payload),
-                    "LabelWorker"
-                  ),
+                  //       },
+                  //     };
+                  //     //   console.log(index + ' finished !')
+                  //     return obj;
+                  //   }
+                  // ),
+                  parcel_list: pl.sort((a, b) => {
+                    return (
+                      tracking_array.indexOf(a.tracking_numbers[0]) -
+                      tracking_array.indexOf(b.tracking_numbers[0])
+                    );
+                  }),
                 }
               : undefined;
 
           response = {
             status: item.status,
             data: {
+              _id: this.asset._id, // service id
               agent: "UPS",
               carrier: this.carrier,
               mail_class: this.mailClass,
+              description: this.asset.description,
               unit_weight: "lb", // api get in future --》 ship_parameters
               //   length_unit: "inch",
               weight: billingWeight,
@@ -474,9 +529,7 @@ class UPS extends Service {
               asset: {
                 code: this.asset.code,
                 logo_url: this.asset.logo_url,
-                description: this.asset.description,
-                name: this.asset.name,
-                isDisplayOnly: this.asset.isDisplayOnly,
+                name: this.asset.nick_name,
               },
               ...extra,
             },
@@ -488,6 +541,7 @@ class UPS extends Service {
             status: 500,
             message: "internal error",
             data: {
+              _id: this.asset._id,
               request_id: JSON.parse(item.config.data).request_id,
               package_key: JSON.parse(item.config.data).package_key,
               order_id: undefined,
@@ -512,18 +566,20 @@ class UPS extends Service {
           status: item.status,
           message: item.data.message,
           data: {
+            _id: this.asset._id,
             request_id: JSON.parse(item.config.data).request_id,
             package_key: JSON.parse(item.config.data).package_key,
             order_id: undefined,
+            agent: "UPS",
+            carrier: this.carrier,
+            mail_class: this.mailClass,
             asset: {
               code: this.asset.code,
               logo_url: this.asset.logo_url,
               description: this.asset.description,
-              name: this.asset.name,
+              name: this.asset.nick_name,
             },
-            agent: "UPS",
-            carrier: this.carrier,
-            mail_class: this.mailClass,
+
             // asset is the data form server-side
           },
         };
@@ -538,13 +594,22 @@ class UPS extends Service {
     try {
       // console.log(shipment)
       let request_body = this.shipmentMapRequest(shipment, "in", "lb", "ship");
+
+      // console.log(
+      //   util.inspect(request_body, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       const response = await axios({
         method: "post",
         url: this.apiEndPoint + url,
 
         headers: {
           "content-type": "application/json",
-          AccessLicenseNumber: this.account.AccessLicenseNumber,
+          AccessLicenseNumber:
+            this.account.AccessLicenseNumber || this.account.AccessKey,
           Password: this.account.Password,
           Username: this.account.Username,
           transId: "random123",
@@ -571,13 +636,21 @@ class UPS extends Service {
     try {
       // console.log(shipment)
       let request_body = this.shipmentMapRequest(shipment);
+      // console.log(
+      //   util.inspect(request_body, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       const response = await axios({
         method: "post",
         url: this.apiEndPoint + url,
-        timeout: 5000,
+        timeout: 6000,
         headers: {
           "content-type": "application/json",
-          AccessLicenseNumber: this.account.AccessLicenseNumber,
+          AccessLicenseNumber:
+            this.account.AccessLicenseNumber || this.account.AccessKey,
           Password: this.account.Password,
           Username: this.account.Username,
           transId: "random123",
@@ -586,10 +659,15 @@ class UPS extends Service {
         data: JSON.stringify(request_body),
       });
 
-      // return response;
-      // console.log(response);
+      // console.log(util.inspect(response.data, {showHidden: false, depth: null}))
       let ResponseWithoutHeader = await this.handleResonse(response, "rate");
-      //   console.log(ResponseWithoutHeader)
+      // console.log(
+      //   util.inspect(ResponseWithoutHeader, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       return ResponseWithoutHeader;
     } catch (error) {
       console.log(error);

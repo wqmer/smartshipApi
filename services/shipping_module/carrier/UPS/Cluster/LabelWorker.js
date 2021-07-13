@@ -31,5 +31,5 @@ process.on("message", async function (msg) {
   //     Date.now() - st
   //   } ms`
   // );
-  process.send(result);
+        process.send(result);
 });

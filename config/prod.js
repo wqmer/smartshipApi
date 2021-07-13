@@ -7,11 +7,25 @@ const {
   testBase64,
   IBProdEndpoint,
   DeftShipProdEndpoint,
+  UpsEndpoint,
+  UpsLogo,
 } = process.env;
-
+const URL = {
+  UPS: UpsEndpoint,
+  FEDEX: undefined,
+};
+const LOGO = {
+  UPS: UpsLogo,
+  FEDEX: undefined,
+};
 module.exports = {
+  URL,
+  LOGO,
   IBProdEndpoint,
   DeftShipProdEndpoint,
+  UpsEndpoint,
+  UpsLogo,
+  
   // googleClientID: process.env.GOOGLE_CLIENT_ID,
   // googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   // mongoURI: process.env.MONGO_URI,

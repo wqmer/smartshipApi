@@ -37,8 +37,8 @@ const handleImage = async (ISConvert, ISRotate, BASE64DATA) => {
       image = await Jimp.read(BASE64DATA);
       result = await image
         .rotate(270)
-        .crop(0, 0, 800, 1200)
-        .quality(60)
+        .crop(3, 2, 795, 1195)
+        .quality(0)
         .getBufferAsync(Jimp.MIME_JPEG);
       return result;
       break;

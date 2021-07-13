@@ -2,8 +2,8 @@
   "name": "api-server",
   "version": "1.0.0",
   "engines": {
-    "node": "8.11.1",
-    "npm": "5.6.0 "
+    "node": "v14.11.0",
+    "npm": "7.6.3"
   },
   "scripts": {
     "start": "node index.js "
@@ -21,6 +21,7 @@
     "cookie-session": "^2.0.0-beta.2",
     "crypto": "^1.0.1",
     "debug": "^4.1.1",
+    "delay": "^5.0.0",
     "dotenv": "^8.2.0",
     "express": "^4.16.3",
     "express-session": "^1.15.6",
@@ -54,6 +55,7 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.5",
     "shortid": "^2.2.15",
+    "soap": "^0.39.0",
     "uuid": "^3.3.3",
     "xls-to-json": "^0.5.1",
     "xlsx": "^0.14.1"

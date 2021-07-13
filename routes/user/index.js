@@ -4,15 +4,16 @@ const User = require("../../mongoDB/model/User");
 const Ledger = require("../../mongoDB/model/Ledger");
 const Address = require("../../mongoDB/model/Address");
 const Service = require("../../mongoDB/model/Service");
+const Carrier = require("../../mongoDB/model/Carrier");
 const Rate = require("../../mongoDB/model/Rate");
 const Order = require("../../mongoDB/model/Order");
 const shortid = require("shortid");
 const uuid = require("uuid");
 const moment = require("moment");
-const Service_class = require("../../services/shipping_module/carrier/model.js");
+const CarrierClass = require("../../services/shipping_module/carrier/model.js");
 const _ = require("lodash");
 const rp = require("request-promise");
-const mock_submit_order = require("../../services/shipping_module/carrier/fedEx/mock");
+// const mock_submit_order = require("../../services/shipping_module/carrier/fedEx/mock");
 const chukoula = require("../../services/shipping_module/third_party_api/chukoula");
 const PDFMerger = require("pdf-merger-js");
 const ServiceClass = require("../../services/shipping_module/carrier");
@@ -21,6 +22,8 @@ const rrad = require("rrad");
 const Fakerator = require("fakerator");
 const fakerator = Fakerator();
 const util = require("util");
+const config = require("../../config/dev");
+const mongoose = require("mongoose");
 
 const {
   mapRequestToModel,
@@ -493,69 +496,69 @@ router.post("/update_drafts", (req, res) => {
 });
 
 //批量提交订单   ---- 递交待处理订单至远程服务器拿回label数据 ，-----目前为模拟
-router.post("/mock_submit_order", (req, res) => {
-  const {
-    service_class,
-    order_id,
-    // status,
-    sender,
-    recipient,
-    carrier,
-    parcel,
-    postage,
-    vendor,
-  } = req.body;
+// router.post("/mock_submit_order", (req, res) => {
+//   const {
+//     service_class,
+//     order_id,
+//     // status,
+//     sender,
+//     recipient,
+//     carrier,
+//     parcel,
+//     postage,
+//     vendor,
+//   } = req.body;
 
-  Order.findOne({
-    order_id,
-    user_id: req.session.user_info.user_id,
-  })
-    .then((data) => {
-      if (data && data.status != "completed") {
-        // here to begin submitting order , mock
-        mock_submit_order(req.body)
-          .then((response) => {
-            if (response.code == 0) {
-              //做测试用，暂不改状态
-              let update_data = {
-                status: "ready_to_ship",
-              };
-              Order.findOneAndUpdate(
-                { order_id: req.body.order_id },
-                update_data,
-                { new: true }
-              )
-                .then((result) => {
-                  responseClient(
-                    res,
-                    200,
-                    0,
-                    "submit successfully",
-                    response.data
-                  );
-                })
-                .catch((e) => responseClient(res, 500, 3, e));
-            } else {
-              responseClient(
-                res,
-                200,
-                1,
-                "can not submit order ",
-                response.message
-              );
-            }
-          })
-          .catch((error) =>
-            responseClient(res, 200, 1, error.message, error.data)
-          );
-      } else {
-        responseClient(res, 200, 1, "order does not exist!");
-      }
-    })
-    .catch((err) => {
-      responseClient(res);
-    });
-});
+//   Order.findOne({
+//     order_id,
+//     user_id: req.session.user_info.user_id,
+//   })
+//     .then((data) => {
+//       if (data && data.status != "completed") {
+//         // here to begin submitting order , mock
+//         mock_submit_order(req.body)
+//           .then((response) => {
+//             if (response.code == 0) {
+//               //做测试用，暂不改状态
+//               let update_data = {
+//                 status: "ready_to_ship",
+//               };
+//               Order.findOneAndUpdate(
+//                 { order_id: req.body.order_id },
+//                 update_data,
+//                 { new: true }
+//               )
+//                 .then((result) => {
+//                   responseClient(
+//                     res,
+//                     200,
+//                     0,
+//                     "submit successfully",
+//                     response.data
+//                   );
+//                 })
+//                 .catch((e) => responseClient(res, 500, 3, e));
+//             } else {
+//               responseClient(
+//                 res,
+//                 200,
+//                 1,
+//                 "can not submit order ",
+//                 response.message
+//               );
+//             }
+//           })
+//           .catch((error) =>
+//             responseClient(res, 200, 1, error.message, error.data)
+//           );
+//       } else {
+//         responseClient(res, 200, 1, "order does not exist!");
+//       }
+//     })
+//     .catch((err) => {
+//       responseClient(res);
+//     });
+// });
 
 //预估邮费，返回可用服务渠道和价格
 router.post("/get_service_rate", (req, res) => {
@@ -595,30 +598,91 @@ router.post("/get_service_rate", (req, res) => {
 //预估邮费by包裹信息
 router.post("/get_rate", async (req, res) => {
   try {
+    //find all carrier account avaialbe
     let shipment = req.body;
-    //获取所有对此用户开放的服务
-    let services = await Service.find({
-      status: ["activated", "unauthorized"],
+    let carrier_avaiable = await Carrier.find({
+      // _id: carrier,
+      // user: req.session.user_info.user_object_id,
+      status: "activated",
       $or: [
-        { auth_group: { $in: req.session.user_info.user_id } },
-        { type: "default" },
+        // { _id: carrier },
+        { user: req.session.user_info.user_object_id },
+        { auth_group: { $in: req.session.user_info.user_object_id } },
       ],
+      // match: [{ status: "activated" }],
+      // select: ['-rate'],
     }).populate({
-      path: "rate",
-      match: {
-        $or: [{ user_id: req.session.user_info.user_id }, { type: "default" }],
+      path: "service",
+      match: [{ status: "activated" }],
+      perDocumentLimit: 10,
+      populate: {
+        path: "rate",
+        perDocumentLimit: 50,
+        match: {
+          $or: [
+            { user_id: req.session.user_info.user_object_id },
+            { auth_group: { $in: req.session.user_info.user_object_id } },
+          ],
+        },
       },
     });
+
+    // console.log(carrier_avaiable);
+
+    if (
+      carrier_avaiable.length == 0 ||
+      carrier_avaiable
+        .map((item) => item.service)
+        .every((item) => item.length == 0)
+    ) {
+      responseClient(res, 404, 1, "no service avaiable");
+    } else {
+      // responseClient(res, 200, 0, "test here", carrier_avaiable);
+    }
+    // let service_avaiable = carrier_avaiable.map((item) => item.service);
+    // if (service_avaiable.every((item) => item.length == 0))responseClient(res, 404, 1, "no service avaiable");
+
     //用重量过滤服务，如果多件货物，只要单个货物，不在服务重量范围，即不可用
     // console.log(shipment)
     const parecels_weight = shipment.parcel_information.parcel_list.map(
       (item) => parseFloat(item.pack_info.weight)
     );
 
-    // console.log(shipment)
-    // console.log( Number(parseFloat( 1 * convert_value_weight).toFixed(2)))
+    let serviceAfterFlat = carrier_avaiable
+      .map(({ service, asset, agent, user, auth_group }) => {
+        return service.map(
+          ({
+            ship_parameters,
+            rate,
+            status,
+            _id,
+            carrier,
+            mail_class,
+            description,
+            type,
+          }) => {
+            return {
+              asset,
+              user,
+              auth_group,
+              agent,
+              ship_parameters,
+              rate,
+              status,
+              _id,
+              carrier,
+              mail_class,
+              description,
+              type,
+            };
+          }
+        );
+      })
+      .flat(2);
 
-    const myService = new Service_class();
+    // // console.log(shipment)
+    // // console.log( Number(parseFloat( 1 * convert_value_weight).toFixed(2)))
+
     const is_in_range = function (
       weight_array,
       service_min_weight,
@@ -626,26 +690,26 @@ router.post("/get_rate", async (req, res) => {
       unit_weight,
       unit_weight_accepted
     ) {
-      let convert_value_weight = myService.getConvertFactor(
+      if (!service_min_weight) service_min_weight = 0;
+      let carrierClass = new CarrierClass();
+      let convert_value_weight = carrierClass.getConvertFactor(
         unit_weight,
         unit_weight_accepted
       );
 
-      // console.log("current unit is " + unit_weight);
-      // console.log("target unit is " + unit_weight_accepted);
-
       return weight_array.every(
         (element) =>
-          //   element > service_min_weight && element < service_max_weight
-          Number(parseFloat(element * convert_value_weight).toFixed(2)) >
-            service_min_weight &&
-          Number(parseFloat(element * convert_value_weight).toFixed(2)) <
-            service_max_weight
+          //element > service_min_weight && element < service_max_weight
+          Number(
+            parseFloat(element * convert_value_weight).toFixed(2) >
+              service_min_weight
+          ) &&
+          (!service_max_weight ||
+            Number(parseFloat(element * convert_value_weight).toFixed(2)) <
+              service_max_weight) // True , if service was not set a Max_weight or parcel's weight smaller than Max_weight
       );
     };
-
-    // console.log(services);
-    let serviceAvail = services.filter((item) =>
+    let serviceAvail = serviceAfterFlat.filter((item) =>
       is_in_range(
         parecels_weight,
         item.ship_parameters.weight_min,
@@ -654,64 +718,34 @@ router.post("/get_rate", async (req, res) => {
         item.ship_parameters.weight_unit
       )
     );
-    // console.log(serviceAvail);
-    //获得服务后调用对应类方法的rate 方法返回报价
+
     let status = 200;
     let status_code = 0;
     let response;
-    let fail_result;
+
     if (serviceAvail.length > 0) {
-      let promises = serviceAvail.map((item) => {
-        const Service = ServiceClass(item.agent);
+      let promises = serviceAvail.map(async (item) => {
+        const Service = ServiceClass(item.type);
         const service = new Service(
-          item.api_parameters.account_information,
-          item.api_parameters.request_url,
+          item.asset.account_information,
+          item.asset.request_url,
           item.rate,
-          item.carrier,
+          item.type,
           item.mail_class,
-          {
-            // isDisplayOnly:'x',
-            isDisplayOnly:
-              item.type === "default" &&
-              !item.auth_group.includes(req.session.user_info.user_id)
-                ? true
-                : false,
-            ...item.asset,
-          }
+          { _id: item._id, description: item.description, ...item.asset }
         );
-        return service.rate(shipment);
+        let result = await service.rate(shipment);
+        return result;
       });
       response = await Promise.all(promises);
 
-      // console.log(response)
-
-      //全都报错状态
-      // fail_result = response.filter(item => item.status != 201 && item.status != 200)
-      // if (fail_result.length == response.length) {
-      //     let status_array = _.uniqBy(response.map(item => item.status))
-      //     //报错一致，则返回同一报错
-      //     let messages_array = response.map(item => item.message)
-      //     if (status_array.length == 1) {
-      //         status = status_array[0]
-      //         response_message = '估计失败,' + '第三方服务报错： ' + messages_array[0]
-      //     } else {
-      //         //报错不一致，则返回都报错状态。 Todo 多错误 返回
-      //         status = 207
-      //         response_message = '估计失败, 多状态错误，联系管理员'
-      //     }
-      //     status_code = 1
-      //     //部分报错，状态
-      // } else {
-      //     status = fail_result.length == 0 ? 201 : 207
-      //     status_code = fail_result.length == 0 ? 0 : 1
-      //     response_message = fail_result.length == 0 ? '估计成功' : '部分估计不成功'
-      // }
       responseClient(res, status, status_code, "rate successfully", response);
     } else {
-      responseClient(res, status, status_code, "no service avaiable");
+      // responseClient(res, status, status_code, "no service avaiable");
+      // return;
     }
   } catch (error) {
-    console.log(error);
+    // responseClient(res, 400, 1, "no service avaiable");
     responseClient(res);
   }
 
@@ -740,27 +774,239 @@ router.post("/get_rate", async (req, res) => {
   //     .catch(error => responseClient(res))
 });
 
-//获取当前客户可用服务渠道
-router.post("/get_service", (req, res) => {
-  //返回所有可用渠道，由管理员或者代理添加。会有默认可用渠道
-  Service.find({
-    status: "activated",
-    $or: [
-      { auth_group: { $in: req.session.user_info.user_id } },
-      { type: "default" },
-    ],
-    // match:{ status : "activated" },
-    // select: ['-rate'],
+// 添加 carrier
+router.post("/add_carrier", async (req, res) => {
+  let { type, asset } = req.body;
+  try {
+    let carrier = new Carrier({
+      type,
+      asset: {
+        ...asset,
+        nick_name: asset.nick_name || type,
+        code: type + "@" + shortid.generate(),
+        logo_url: config.LOGO[type],
+        request_url: config.URL[type],
+      },
+      user: req.session.user_info.user_object_id,
+    });
+
+    let result = await carrier.save();
+
+    // console.log(result)
+    responseClient(res, 200, 0, "Add carrier account successfully", result);
+  } catch (error) {
+    responseClient(res);
+    console.log(error);
+  }
+});
+
+
+router.post("/get_carrier", async (req, res) => {
+  let {
+    // text,
+    page,
+    limit,
+    filter,
+  } = req.body;
+
+  //分页
+  let options = _.pickBy(
+    {
+      page: req.body.page,
+      limit: req.body.limit,
+    },
+    _.identity
+  );
+
+  const query = _.pickBy(
+    {
+      // "$text":text,
+      // forwarder: req.session.forwarder_info.forwarder_object_id,
+      user: req.session.user_info.user_object_id,
+      ...filter,
+    },
+    _.identity
+  );
+
+  if (req.body.limit == undefined) {
+    options.pagination = false;
+    // options.select = 'order_id -_id'
+  }
+  //查询范围
+  let query_field = [
+    "user",
+    // "customer_order_id",
+    // "recipient.recipient_name",
+    // "recipient.add1",
+    // "recipient.add2",
+    // "recipient.state",
+    // "recipient.city"
+  ];
+
+  //添加到模糊查询
+  if (req.body.searching_string) {
+    query["$or"] = [];
+    for (let i = 0; i < query_field.length; i++) {
+      let object = {};
+      object[query_field[i]] = {
+        $regex: req.body.searching_string,
+        $options: "i",
+      };
+      query["$or"].push(object);
+    }
+  }
+
+  // console.log(query)
+  // console.log(options)
+
+  Carrier.paginate(query, options)
+    .then(function (result) {
+      // console.log(result)
+      responseClient(res, 200, 0, "query data success !", result);
+    })
+    .catch((err) => {
+      console.log(err);
+      responseClient(res);
+    });
+});
+
+//to do
+router.post("/update_carrier", async (req, res) => {
+  let { _id, asset } = req.body;
+  try {
+    let carrier = {
+      asset: {
+        ...asset,
+        nick_name: asset.nick_name || type,
+      },
+    };
+
+    console.log(carrier);
+
+    let result = await Carrier.updateOne(
+      {
+        _id,
+        user: req.session.user_info.user_object_id,
+      },
+      { asset: carrier.asset }
+    );
+
+    // console.log(result)
+    result.n == 1
+      ? responseClient(res, 200, 0, "Update carrier account successfully")
+      : responseClient(res, 404, 1, "No carrier account found");
+  } catch (error) {
+    responseClient(res);
+    console.log(error);
+  }
+});
+
+router.put("/update_carrier_status", async (req, res) => {
+  let { _id, status } = req.body;
+  try {
+    let result = await Carrier.updateOne(
+      {
+        _id,
+        user: req.session.user_info.user_object_id,
+      },
+      { status }
+    );
+
+    // console.log(result)
+    result.n == 1
+      ? responseClient(res, 200, 0, "Update carrier account successfully")
+      : responseClient(res, 404, 1, "No carrier account found");
+  } catch (error) {
+    responseClient(res);
+    console.log(error);
+  }
+});
+
+router.post("/delete_carrier", async (req, res) => {
+  let { _id } = req.body;
+  Carrier.deleteOne({
+    _id,
+    user: req.session.user_info.user_object_id,
   })
     .then((result) => {
-      // console.log(result);
-      if (result.length > 0) {
-        responseClient(res, 200, 0, "find service successfully", result);
+      if (result.n === 1) {
+        responseClient(res, 200, 0, "delete successfully!");
       } else {
-        responseClient(res, 200, 0, "no service avaiable");
+        responseClient(res, 404, 1, "Carrier account does not exist!");
       }
     })
+    .catch((err) => {
+      responseClient(res);
+    });
+});
+
+router.post("/add_service", async (req, res) => {
+  // find carrier 账号 ，为某个账号添加服务
+  let { carrier, mail_class, type, description } = req.body;
+  let service = new Service({
+    carrier,
+    mail_class,
+    description,
+    type, // prepare for 3rd agent
+  });
+  let result_add = await service.save();
+  let result_update = await Carrier.update(
+    { _id: carrier },
+    { $push: { service: result_add._id } }
+  );
+
+  if (result_update.n === 1) {
+    responseClient(res, 200, 0, "Add successfully!", result_add);
+  } else {
+    responseClient(res, 404, 1, "Failed to add!");
+  }
+});
+
+router.post("/get_service", (req, res) => {
+  //返回所有可用渠道
+  let { carrier } = req.body;
+  Carrier.find({
+    _id: carrier,
+    user: req.session.user_info.user_object_id,
+    // status: "activated",
+    // $or: [
+    //   { auth_group: { $in: req.session.user_info.user_id } },
+    //   { _id: carrier },
+    //   { user: req.session.user_info.user_object_id },
+    //   { auth_group: { $in: req.session.user_info.user_id } },
+    // ],
+    // match: [],
+    // select: ['-rate'],
+  })
+    .populate("service")
+    .then((result) => {
+      // console.log(result);
+      responseClient(res, 200, 0, "Get service successfully", result);
+    })
     .catch((error) => responseClient(res));
+});
+
+//更新渠道
+router.put("/update_service", async (req, res) => {
+  //
+  const { status, _id } = req.body;
+
+  try {
+    let result = await Service.updateOne(
+      {
+        _id,
+      },
+      { status }
+    );
+
+    // console.log(result)
+    result.n == 1
+      ? responseClient(res, 200, 0, "Update service successfully")
+      : responseClient(res, 404, 1, "No service found");
+  } catch (error) {
+    responseClient(res);
+    console.log(error);
+  }
 });
 
 //查询tracking
@@ -870,28 +1116,43 @@ router.post("/create_shipment", async (req, res) => {
 
     //检查是否有对应渠道，没有返回res
     const rquest_service_code = service_information.service_content[0].code;
-    const services = await Service.find({
-      "asset.code": rquest_service_code,
-      status: "activated",
+    const services = await Service.findOne({
+      _id: rquest_service_code,
       $or: [
-        { auth_group: { $in: req.session.user_info.user_id } },
-        { type: "default" },
+        { status: "activated" },
+        { auth_group: { $in: req.session.user_info.user_object_id } },
       ],
+    }).populate({
+      path: "carrier",
+      // status: "activated",
+      match: {
+        $or: [
+          { auth_group: { $in: req.session.user_info.user_object_id } },
+          { user: req.session.user_info.user_object_id },
+        ],
+        status: "activated",
+      },
+      perDocumentLimit: 10,
     });
-    if (services.length == 0)
+    if (!services || !services.carrier)
       return responseClient(
         res,
         200,
         1,
         "Ship method is not avaiable for this account"
       );
+    // console.log(services);
     //get service info
-    // console.log(services)
+    // console.log(services);
     let serviceInfo = {
-      carrier: services[0].carrier,
-      mail_class: services[0].mail_class,
-      agent: services[0].agent,
-      asset: services[0].asset,
+      carrier: mongoose.Types.ObjectId(services.carrier._id),
+      mail_class: services.mail_class,
+      type: services.type,
+      asset: {
+        logo_url: services.carrier.asset.logo_url,
+        description: services.description,
+        code: services._id,
+      },
     };
 
     //检查客户订单号 如果有单号，去检查单号是否重复 ,没有就创建
@@ -914,14 +1175,18 @@ router.post("/create_shipment", async (req, res) => {
     }
     //-------递交远程服务器，创建运单。 统一接口处理--------------------------
     // console.log(services)
-    const MySerivceClass = ServiceClass(services[0].agent);
+    const MySerivceClass = ServiceClass(services.type);
     const service = new MySerivceClass(
-      services[0].api_parameters.account_information,
-      services[0].api_parameters.request_url,
-      services[0].rate,
-      services[0].carrier,
-      services[0].mail_class,
-      services[0].asset
+      services.carrier.asset.account_information,
+      services.carrier.asset.request_url,
+      services.rate,
+      services.carrier,
+      services.mail_class,
+      {
+        _id: services._id,
+        description: services.description,
+        ...services.asset,
+      }
     );
 
     // console.log(util.inspect(shipment, false, null, true /* enable colors */));
@@ -929,7 +1194,7 @@ router.post("/create_shipment", async (req, res) => {
 
     const handleMultiResult = async (result) => {
       // console.log(result)
-      let zone = result[0].data.zone;
+      let zone = result[0].data ? result[0].data.zone : undefined;
       let total_fee = result
         .map((item) => (item.status != 201 ? 0 : item.data.price.total))
         .reduce((a, c) => a + c);
@@ -1025,7 +1290,7 @@ router.post("/create_shipment", async (req, res) => {
     };
 
     const handleSingleResult = async (result) => {
-      console.log(result);
+     
       let total_fee, weight, zone, parcelList;
       let order_status, status, response_status, response_message;
       if (result.status != 200 && result.status != 201) {
@@ -1072,14 +1337,14 @@ router.post("/create_shipment", async (req, res) => {
 
       return obj;
     };
-    
+
     let handleResult = Array.isArray(result)
       ? await handleMultiResult(result)
       : await handleSingleResult(result);
 
-    console.log(
-      util.inspect(handleResult, false, null, true /* enable colors */)
-    );
+    // console.log(
+    //   util.inspect(handleResult, false, null, true /* enable colors */)
+    // );
     // 根据result 得出 total fee, order_status, response_status, response_message, status 值， result 有两种形式，多次请求返回格式，和单次请求返回格式。根据是否是数组判断
     //------余额变动，添加账簿记录------------------------------------------
 
@@ -1122,7 +1387,27 @@ router.post("/create_shipment", async (req, res) => {
         receipant_information,
         parcel_information
       ),
-      service: serviceInfo,
+
+      // let serviceInfo = {
+      //   carrier: mongoose.Types.ObjectId(services.carrier._id),
+      //   mail_class: services.mail_class,
+      //   type: services.type,
+      //   asset: {
+      //     logo_url: services.carrier.asset.logo_url,
+      //     description: services.description,
+      //     code: services._id,
+      //   },
+      // };
+      service: {
+        carrier: serviceInfo.carrier,
+        carrier_type: serviceInfo.type,
+        mail_class: serviceInfo.mail_class,
+        asset: {
+          logo_url: serviceInfo.asset.logo_url,
+          description: serviceInfo.asset.description,
+          code: serviceInfo.asset.code,
+        },
+      },
       postage,
       user: req.session.user_info.user_object_id,
     });
@@ -1412,5 +1697,15 @@ router.put("/set_default_address", async (req, res) => {
 //         res.status(500).json({code: 1, message:'internal error'})
 //     }
 // })
+
+router.post("/read_sheet", (req, res) => {
+  try {
+    let data = wb.readSheet();
+    data = data.map((item) => item[" 跟踪号"].toString());
+    res.status(200).json({ code: 0, message: "Success !", data });
+  } catch (error) {
+    res.status(500).json({ code: 1, message: "internal error" });
+  }
+});
 
 module.exports = router;

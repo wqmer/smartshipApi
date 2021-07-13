@@ -10,13 +10,27 @@ const {
   mongoURI,
   IBSandBoxEndpoint,
   DeftShipSandBoxEndpoint,
+  UpsEndpoint,
+  UpsLogo,
+  FedexLogo
 } = process.env;
 
-module.exports = {
+const URL = {
+  UPS: UpsEndpoint,
+  FEDEX: undefined,
+};
+const LOGO = {
+  UPS: UpsLogo,
+  FEDEX: FedexLogo,
+};
 
+module.exports = {
+  URL,
+  LOGO,
   mongoURI,
   IBSandBoxEndpoint,
   DeftShipSandBoxEndpoint,
+  UpsEndpoint,
+  UpsLogo,
   // redisUrl: 'redis://127.0.0.1:6379',
-
 };
