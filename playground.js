@@ -54,13 +54,6 @@ for (i = 0; i < 10; i++) {
     },
   });
 }
-const account_information = {
-  Key: "aIWRBPbhtBEQEHMO",
-  Password: "beEXDfGdcqYk7jbg5VHXHFdk3",
-  AccountNumber: "674060912",
-  MeterNumber: "253671382",
-  HubId: 5902,
-};
 
 const test_shipment = {
   sender_information: {
