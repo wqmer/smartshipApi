@@ -22,8 +22,7 @@ class FEDEX extends CarrierClass {
     this.asset = asset;
   }
 
-  getSurChargeName = () => {};  
-  
+  getSurChargeName = () => {};
 
   getServiceCode = () => {
     let code;
@@ -90,10 +89,41 @@ class FEDEX extends CarrierClass {
           item.pack_info.height * convert_value_length
         ).toFixed(2);
 
+        let refernece1 = item.pack_info.reference_1
+          ? item.pack_info.reference_1.trim()
+            ? {
+                CustomerReferenceType: "P_O_NUMBER",
+                Value: item.pack_info.reference_1,
+              }
+            : undefined
+          : undefined;
+        let refernece2 = item.pack_info.reference_2
+          ? item.pack_info.reference_2.trim()
+            ? {
+                CustomerReferenceType: "CUSTOMER_REFERENCE",
+                Value: item.pack_info.reference_2,
+              }
+            : undefined
+          : undefined;
+        let InsuredValue = item.declareValue
+          ? {
+              Currency: "USD",
+              Amount: parseFloat(item.declareValue).toFixed(2),
+            }
+          : undefined;
+        let CustomerReferences = undefined;
+        if (refernece1 && !refernece2) {
+          CustomerReferences = [refernece1];
+        } else if (!refernece1 && refernece2) {
+          CustomerReferences = [refernece2];
+        } else if (refernece1 && refernece2) {
+          CustomerReferences = [refernece1, refernece2];
+        }
+
         let shipment_fedex = {
           SequenceNumber: this.getServiceCode() == "SMART_POST" ? 1 : sequence,
           GroupPackageCount: 1,
-          // GroupNumber: "0",
+          InsuredValue,
           Weight: {
             Units: "LB",
             Value: parseFloat(weight),
@@ -104,10 +134,16 @@ class FEDEX extends CarrierClass {
             Height: Math.ceil(parseFloat(height)),
             Units: "IN",
           },
-          CustomerReferences: {
-            CustomerReferenceType: "CUSTOMER_REFERENCE",
-            Value: "test",
-          },
+          // CustomerReferences: {
+          //   CustomerReferenceType: "P_O_NUMBER",
+          //   Value: item.reference_1,
+          // },
+          // CustomerReferences: {
+          //   CustomerReferenceType: "CUSTOMER_REFERENCE",
+          //   Value:  item.pack_info.reference_2,
+          // },
+
+          CustomerReferences,
         };
 
         //--- todo
@@ -193,9 +229,7 @@ class FEDEX extends CarrierClass {
       },
 
       RequestedShipment: {
-        ShipTimestamp: new Date(
-          date.getTime() 
-        ).toISOString(),
+        ShipTimestamp: new Date(date.getTime()).toISOString(),
 
         DropoffType: "REGULAR_PICKUP",
 
@@ -290,16 +324,19 @@ class FEDEX extends CarrierClass {
         status: item.response.status,
         message: item.response.data.response.errors[0].message,
         data: {
-          package_key: JSON.parse(item.config.data).package_key,
+          _id: this.asset._id,
+          request_id: undefined,
+          package_key: undefined,
           order_id: undefined,
+          agent: "FEDEX",
+          carrier: this.carrier,
+          mail_class: this.mailClass,
           asset: {
             code: this.asset.code,
             logo_url: this.asset.logo_url,
             description: this.asset.description,
-            name: this.asset.name,
-            isDisplayOnly: this.asset.isDisplayOnly,
+            name: this.asset.nick_name,
           },
-          // asset is the data form server-side
         },
       };
       return response;
@@ -309,16 +346,19 @@ class FEDEX extends CarrierClass {
         // status: item.status ? item.status : 503,
         message: item.code ? item.code : "No response from remote",
         data: {
+          _id: this.asset._id,
+          request_id: undefined,
           package_key: undefined,
           order_id: undefined,
+          agent: "FEDEX",
+          carrier: this.carrier,
+          mail_class: this.mailClass,
           asset: {
             code: this.asset.code,
             logo_url: this.asset.logo_url,
             description: this.asset.description,
-            name: this.asset.name,
-            isDisplayOnly: this.asset.isDisplayOnly,
+            name: this.asset.nick_name,
           },
-          // asset is the data form server-side
         },
       };
 
@@ -359,15 +399,27 @@ class FEDEX extends CarrierClass {
     //   })
     // );
     //当方法是ship时，需要判断两种情况，主单号是否成功，和子单号是否都成功
+    // let isScuss =
+    //   type == "rate"
+    //     ? item.HighestSeverity == "SUCCESS" || item.HighestSeverity == "NOTE"
+    //     : (!item.map((e) => e.Severity).includes("ERROR") &&
+    //         !item.map((e) => e.Severity).includes("FAILURE")) ||
+    //       (item.HighestSeverity != "ERROR" &&
+    //         item.HighestSeverity != "FAILURE");
+
     let isScuss =
       type == "rate"
-        ? item.HighestSeverity == "SUCCESS" || item.HighestSeverity == "NOTE"
-        : (!item.map((e) => e.Severity).includes("ERROR") &&
-            !item.map((e) => e.Severity).includes("FAILURE")) ||
-          (item.HighestSeverity != "ERROR" &&
-            item.HighestSeverity != "FAILURE");
-            
-
+        ? item.HighestSeverity != "ERROR" && item.HighestSeverity != "FAILURE"
+        : // : !(item.map((e) => e.Notifications[0].Severity).includes("ERROR") &&
+          //     !item
+          //       .map((e) => e.Notifications[0].Severity)
+          //       .includes("FAILURE")) ||
+          //   (item.HighestSeverity != "ERROR" &&
+          //     item.HighestSeverity != "FAILURE");
+          item.every(
+            (e) =>
+              e.HighestSeverity != "ERROR" && e.HighestSeverity != "FAILURE"
+          );
     switch (true) {
       case isScuss:
         try {
@@ -442,7 +494,7 @@ class FEDEX extends CarrierClass {
               {
                 package_key: undefined,
                 baseCharges: rateInfo.ShipmentRateDetail.TotalNetFreight.Amount,
-                surCharges: rateInfo.ShipmentRateDetail.TotalSurcharges.Amount,
+                surCharges: rateInfo.ShipmentRateDetail.Surcharges,
                 totalCharges: total_charge,
                 BillingWeight: billingWeight,
               },
@@ -589,7 +641,7 @@ class FEDEX extends CarrierClass {
           message:
             type == "rate"
               ? item.Notifications.map((item) => item.Message)
-              : item.map((item) => item.Notifications),
+              : item.map((item) => item.Notifications[0].Message),
           data: {
             _id: this.asset._id,
             request_id: undefined,
@@ -639,13 +691,13 @@ class FEDEX extends CarrierClass {
         ...this.authDetail(),
         ...this.shipmentMapRequest(shipment, "ship"),
       });
-      // console.log(
-      //   util.inspect([firstShipment], {
-      //     showHidden: false,
-      //     depth: null,
-      //     colors: true,
-      //   })
-      // );
+      console.log(
+        util.inspect([firstShipment], {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
       // return [firstShipment];
       let response = [];
       if (shipment.parcel_information.parcel_list.length == 1) {
@@ -661,19 +713,18 @@ class FEDEX extends CarrierClass {
         // );
         return Response;
       }
-      console.log(
-        util.inspect(firstShipment, {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect(firstShipment, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       shipment.parcel_information.parcel_list.shift();
 
-      // console.log("works");
       if (
-        firstShipment.HighestSeverity == "SUCCESS" ||
-        firstShipment.HighestSeverity == "NOTE"
+        firstShipment.HighestSeverity != "ERROR" &&
+        firstShipment.HighestSeverity != "FAILURE"
       ) {
         if (this.mailClass.toLowerCase() == "ground multiweight") {
           let {
@@ -718,31 +769,6 @@ class FEDEX extends CarrierClass {
                   parcel_information,
                 } = shipment;
                 shipment.parcel_information.parcel_list = [item];
-                // console.log(
-                //   util.inspect(
-                //     {
-                //       ...this.authDetail(),
-                //       ...this.shipmentMapRequest(
-                //         {
-                //           sender_information,
-                //           receipant_information,
-                //           parcel_information,
-                //         },
-                //         "ship",
-                //         index + 2,
-                //         packageCount,
-                //         firstShipment.CompletedShipmentDetail.MasterTrackingId
-                //           .TrackingNumber
-                //       ),
-                //     },
-                //     {
-                //       showHidden: false,
-                //       depth: null,
-                //       colors: true,
-                //     }
-                //   )
-                // );
-                // await delay(1000);
                 let result = await shipAsync({
                   ...this.authDetail(),
                   ...this.shipmentMapRequest(
@@ -773,13 +799,13 @@ class FEDEX extends CarrierClass {
       } else {
       }
 
-      // console.log(
-      //   util.inspect(response, {
-      //     showHidden: false,
-      //     depth: null,
-      //     colors: true,
-      //   })
-      // );
+      console.log(
+        util.inspect(response[response.length - 1], {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
       (await response).unshift(firstShipment);
 
       // return response;
@@ -824,18 +850,21 @@ class FEDEX extends CarrierClass {
 
       let getRatesAsync = util.promisify(client.getRates);
 
-      let response = await getRatesAsync({
-        ...this.authDetail(),
-        ...this.shipmentMapRequest(shipment),
-      });
+      let response = await getRatesAsync(
+        {
+          ...this.authDetail(),
+          ...this.shipmentMapRequest(shipment),
+        },
+        { timeout: 6000 }
+      );
 
-      // console.log(
-      //   util.inspect(response, {
-      //     showHidden: false,
-      //     depth: null,
-      //     colors: true,
-      //   })
-      // );
+      console.log(
+        util.inspect(response, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
 
       // return response;
 
@@ -853,7 +882,7 @@ class FEDEX extends CarrierClass {
       console.log(error);
       // return;
       console.log("error happened");
-      //   return this.errorMapResopnse(error);
+      return this.errorMapResopnse(error);
     }
   }
 

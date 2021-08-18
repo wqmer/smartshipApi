@@ -336,6 +336,52 @@ class InternationalBridge extends Service {
     }
   }
 
+  async validateAddress(request_body, url = "/address/validate") {
+    const responseMapToResult = (response) => {
+      let result;
+      if (!response)
+        return {
+          code: 1,
+          message: "No resopnse from remote server ",
+        };
+
+      let data = response.data;
+      switch (response.status) {
+        case 200:
+          result = {
+            status: response.status,
+            code: 0,
+            message: "Process request sucessfully",
+            data,
+          };
+          break;
+        default:
+          result = {
+            status: response.status,
+            code: 1,
+            message: response.data.message,
+          };
+      }
+
+      return result;
+    };
+    try {
+      let response = await axios({
+        method: "post",
+        data: request_body,
+        url: this.apiEndPoint + url,
+        auth: { ...this.account },
+      });
+
+      // console.log(response);
+
+      return responseMapToResult(response);
+    } catch (error) {
+      // console.log(error);
+      return responseMapToResult(error.response);
+    }
+  }
+
   async index(params, url = "/labels") {
     try {
       // console.log(shipment)

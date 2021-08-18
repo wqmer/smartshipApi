@@ -24,7 +24,7 @@ const fakerator = Fakerator();
 const util = require("util");
 const config = require("../../config/dev");
 const mongoose = require("mongoose");
-
+const user = require("../../controller/user");
 const {
   mapRequestToModel,
   responseClient,
@@ -112,6 +112,7 @@ router.post("/login", (req, res) => {
         data.user_object_id = customerInfo._id;
         data.user_level = customerInfo.user_level;
         data.balance = customerInfo.balance;
+        data.billing_type = customerInfo.billing_type;
         //登录成功后设置session
         req.session.user_info = data;
         responseClient(res, 200, 0, "登录成功", data);
@@ -156,6 +157,7 @@ router.get("/userInfo", (req, res) => {
         data.user_object_id = result._id;
         data.user_level = result.user_level;
         data.balance = result.balance;
+        data.billing_type = result.billing_type;
         //登录成功后设置session
         responseClient(res, 200, 0, "获取成功", data);
         // console.log(req.session)
@@ -600,6 +602,7 @@ router.post("/get_rate", async (req, res) => {
   try {
     //find all carrier account avaialbe
     let shipment = req.body;
+    let is_res = shipment.receipant_information.receipant_is_residential;
     let carrier_avaiable = await Carrier.find({
       // _id: carrier,
       // user: req.session.user_info.user_object_id,
@@ -683,12 +686,14 @@ router.post("/get_rate", async (req, res) => {
     // // console.log(shipment)
     // // console.log( Number(parseFloat( 1 * convert_value_weight).toFixed(2)))
 
-    const is_in_range = function (
+    const is_invalid = function (
       weight_array,
       service_min_weight,
       service_max_weight,
       unit_weight,
-      unit_weight_accepted
+      unit_weight_accepted,
+      is_res_only,
+      is_bus_only
     ) {
       if (!service_min_weight) service_min_weight = 0;
       let carrierClass = new CarrierClass();
@@ -697,7 +702,7 @@ router.post("/get_rate", async (req, res) => {
         unit_weight_accepted
       );
 
-      return weight_array.every(
+      let is_every_pack_in_range = weight_array.every(
         (element) =>
           //element > service_min_weight && element < service_max_weight
           Number(
@@ -708,14 +713,40 @@ router.post("/get_rate", async (req, res) => {
             Number(parseFloat(element * convert_value_weight).toFixed(2)) <
               service_max_weight) // True , if service was not set a Max_weight or parcel's weight smaller than Max_weight
       );
+
+      let address_type_invaild = true;
+
+      if (is_res === true) {
+        address_type_invaild =
+          is_res_only === undefined ||
+          is_res_only === true ||
+          (is_bus_only === undefined && is_res_only === undefined) ||
+          (is_bus_only === false && is_res_only === false);
+      }
+
+      if (is_res === false) {
+        address_type_invaild =
+          is_bus_only === undefined ||
+          is_bus_only === true ||
+          (is_bus_only === undefined && is_res_only === undefined) ||
+          (is_bus_only === false && is_res_only === false);
+      }
+
+      // let is_bus_invalid = is_res !== true && is_bus_only !== false;
+
+      return is_every_pack_in_range && address_type_invaild;
     };
+
+    // console.log(serviceAfterFlat);
     let serviceAvail = serviceAfterFlat.filter((item) =>
-      is_in_range(
+      is_invalid(
         parecels_weight,
         item.ship_parameters.weight_min,
         item.ship_parameters.weight_max,
         shipment.parcel_information.unit_weight,
-        item.ship_parameters.weight_unit
+        "lb",
+        item.ship_parameters.is_res_only,
+        item.ship_parameters.is_bus_only
       )
     );
 
@@ -741,10 +772,11 @@ router.post("/get_rate", async (req, res) => {
 
       responseClient(res, status, status_code, "rate successfully", response);
     } else {
-      // responseClient(res, status, status_code, "no service avaiable");
+      responseClient(res, status, status_code, "no service avaiable");
       // return;
     }
   } catch (error) {
+    console.log(error);
     // responseClient(res, 400, 1, "no service avaiable");
     responseClient(res);
   }
@@ -799,7 +831,6 @@ router.post("/add_carrier", async (req, res) => {
     console.log(error);
   }
 });
-
 
 router.post("/get_carrier", async (req, res) => {
   let {
@@ -942,11 +973,12 @@ router.post("/delete_carrier", async (req, res) => {
 
 router.post("/add_service", async (req, res) => {
   // find carrier 账号 ，为某个账号添加服务
-  let { carrier, mail_class, type, description } = req.body;
+  let { carrier, mail_class, type, description, ship_parameters } = req.body;
   let service = new Service({
     carrier,
     mail_class,
     description,
+    ship_parameters,
     type, // prepare for 3rd agent
   });
   let result_add = await service.save();
@@ -1290,7 +1322,6 @@ router.post("/create_shipment", async (req, res) => {
     };
 
     const handleSingleResult = async (result) => {
-     
       let total_fee, weight, zone, parcelList;
       let order_status, status, response_status, response_message;
       if (result.status != 200 && result.status != 201) {
@@ -1681,6 +1712,8 @@ router.put("/set_default_address", async (req, res) => {
     responseClient(res);
   }
 });
+
+router.post("/address_validate", user.addressValidate);
 
 //测试合并
 // router.post('/merge_pdf', async(req, res) => {

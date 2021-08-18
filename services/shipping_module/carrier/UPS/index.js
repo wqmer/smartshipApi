@@ -193,6 +193,22 @@ class UPS extends CarrierClass {
             item.pack_info.height * convert_value_length
           ).toFixed(2);
 
+          let declareValue = parseFloat(item.declareValue).toFixed(2);
+          // declareValue = 200;
+          let refernece1 = item.pack_info.reference_1
+            ? item.pack_info.reference_1.trim()
+              ? {
+                  Value: item.pack_info.reference_1,
+                }
+              : undefined
+            : undefined;
+          let refernece2 = item.pack_info.reference_2
+            ? item.pack_info.reference_2.trim()
+              ? {
+                  Value: item.pack_info.reference_2,
+                }
+              : undefined
+            : undefined;
           //   console.log("length is " + length);
           //   console.log(
           //     "class is " + this.calFreightClass(weight, height, width, length)
@@ -217,12 +233,16 @@ class UPS extends CarrierClass {
               Description: "Package",
             },
 
-            ReferenceNumber: [
-              {
-                Value: "test1",
-              },
-              { Value: "test2" },
-            ],
+            ReferenceNumber: [refernece1, refernece2],
+            PackageServiceOptions:
+              declareValue > 100
+                ? {
+                    DeclaredValue: {
+                      MonetaryValue: declareValue.toString(),
+                      CurrencyCode: "USD",
+                    },
+                  }
+                : undefined,
 
             Dimensions: {
               UnitOfMeasurement: {
@@ -264,12 +284,17 @@ class UPS extends CarrierClass {
         receipant_zip_code,
         receipant_state,
         receipant_phone_number,
+        receipant_is_residential,
       } = shipment.receipant_information;
 
       let shipments = [];
       let shipClass = {};
       let myShipment = {};
       let requestTitle = type == "rate" ? "RateRequest" : "ShipmentRequest";
+
+      let isRes = receipant_is_residential
+        ? { ResidentialAddressIndicator: {} }
+        : undefined;
 
       let paymentMethod =
         this.mailClass.toLowerCase() === "ground freight"
@@ -294,7 +319,7 @@ class UPS extends CarrierClass {
       //------ UPS request format ---------------
       myShipment[`${requestTitle}`] = {
         Request: {
-          SubVersion: "1703",
+          SubVersion: "1801",
           TransactionReference: {
             CustomerContext: "myorder",
           },
@@ -308,7 +333,6 @@ class UPS extends CarrierClass {
                 ? "TRUE"
                 : undefined,
             NegotiatedRatesIndicator: "TRUE",
-            // UserLevelDiscountIndicator: "TRUE",
             RateChartIndicator: "TRUE",
           },
           Shipper: {
@@ -327,7 +351,8 @@ class UPS extends CarrierClass {
             // CompanyDisplayableName : 'test company',
             Address: {
               //   ResidentialAddressIndicator: "",
-              AddressLine: receipant_add1,
+              ...isRes,
+              AddressLine: [receipant_add1, receipant_add2],
               City: receipant_city,
               StateProvinceCode: receipant_state,
               PostalCode: receipant_zip_code,
@@ -357,12 +382,23 @@ class UPS extends CarrierClass {
           //   Weight: "3",
           // },
           Package: packagesArray,
+          RatingMethodRequestedIndicator: "",
+          ItemizedChargesRequestedIndicator: "",
+          TaxInformationIndicator: "",
+          CostCenter: "aaa",
           LabelSpecification: {
             LabelStockSize: { Height: "6" },
             LabelImageFormat: { Code: "gif" },
           },
         },
       };
+      //    console.log(
+      //   util.inspect(myShipment, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       return myShipment;
     } catch (error) {}
 
@@ -428,26 +464,44 @@ class UPS extends CarrierClass {
     switch (item.status) {
       case 200 || 201:
         try {
+          let priceObject =
+            type == "ship"
+              ? item.data.ShipmentResponse.ShipmentResults
+              : item.data.RateResponse.RatedShipment;
+
+          // let isNegotiateRateStyle =
+          //   priceObject.NegotiatedRateCharges != undefined;
+
+          let Negotiated_Charges = priceObject.NegotiatedRateCharges
+            ? priceObject.NegotiatedRateCharges.TotalCharge.MonetaryValue
+            : undefined;
+
           let total_charge =
-            type == "ship"
-              ? item.data.ShipmentResponse.ShipmentResults.ShipmentCharges
-                  .TotalCharges.MonetaryValue
-              : item.data.RateResponse.RatedShipment.TotalCharges.MonetaryValue;
-          let billingWeight =
-            type == "ship"
-              ? item.data.ShipmentResponse.ShipmentResults.BillingWeight.Weight
-              : item.data.RateResponse.RatedShipment.BillingWeight.Weight;
+            type == "rate"
+              ? priceObject.TotalCharges.MonetaryValue
+              : priceObject.ShipmentCharges.TotalCharges.MonetaryValue;
+
+          total_charge = Negotiated_Charges ? Negotiated_Charges : total_charge;
+
+          let SurchargeTotal = Array.isArray(priceObject.ItemizedCharges)
+            ? priceObject.ItemizedCharges
+            : [priceObject.ItemizedCharges];
+
+          let billingWeight = priceObject.BillingWeight.Weight;
+
           let payload =
             type == "ship"
-              ? item.data.ShipmentResponse.ShipmentResults.PackageResults
-              : item.data.RateResponse.RatedShipment.RatedPackage;
+              ? priceObject.PackageResults
+              : priceObject.RatedPackage;
 
           let charge_detail = selectArrayOrObject(payload).map(
             (item, index) => {
               let newItem = {
                 package_key: undefined,
                 baseCharges: item.BaseServiceCharge.MonetaryValue,
-                surCharges: item.ItemizedCharges,
+                surCharges: Array.isArray(item.ItemizedCharges)
+                  ? item.ItemizedCharges
+                  : [item.ItemizedCharges],
                 totalCharges: item.TotalCharges
                   ? item.TotalCharges.MonetaryValue
                   : undefined,
@@ -458,6 +512,31 @@ class UPS extends CarrierClass {
               return newItem;
             }
           );
+
+          // if (isNegotiateRateStyle) {
+          //   //当是合约价时 ，并且一个包裹时，可以尝试设置详情
+          //   charge_detail =
+          //   selectArrayOrObject(payload).length > 1
+          //       ? [
+          //           {
+          //             package_key: undefined,
+          //             baseCharges: total_charge,
+          //             totalCharges: total_charge,
+          //             BillingWeight: billingWeight,
+          //           },
+          //         ]
+          //       : [
+          //           {
+          //             package_key: undefined,
+          //             baseCharges: total_charge,
+          //             surCharges: SurchargeTotal.concat(
+          //               selectArrayOrObject(payload)[0].ItemizedCharges
+          //             ),
+          //             totalCharges: total_charge,
+          //             BillingWeight: billingWeight,
+          //           },
+          //         ];
+          // }
 
           let tracking_array = selectArrayOrObject(payload).map(
             (e) => e.TrackingNumber
@@ -522,6 +601,8 @@ class UPS extends CarrierClass {
               weight: billingWeight,
               price: {
                 total: total_charge,
+                // ups 住宅附加费显示在最外层
+                SurchargeTotal,
                 detail: charge_detail,
               },
               // label_image:item.data.base64_labels.map((lables_image ,index )=> base64Img.imgSync('data:image/png;base64,'+ lables_image, 'labels', 'test'+ Math.random())),
@@ -619,7 +700,14 @@ class UPS extends CarrierClass {
       });
 
       // return response;
-      // console.log(response);
+
+      console.log(
+        util.inspect(response, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
       let ResponseWithoutHeader = await this.handleResonse(response, "ship");
       // console.log(ResponseWithoutHeader)
       return ResponseWithoutHeader;
@@ -636,13 +724,13 @@ class UPS extends CarrierClass {
     try {
       // console.log(shipment)
       let request_body = this.shipmentMapRequest(shipment);
-      // console.log(
-      //   util.inspect(request_body, {
-      //     showHidden: false,
-      //     depth: null,
-      //     colors: true,
-      //   })
-      // );
+      console.log(
+        util.inspect(request_body, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
       const response = await axios({
         method: "post",
         url: this.apiEndPoint + url,
@@ -659,7 +747,13 @@ class UPS extends CarrierClass {
         data: JSON.stringify(request_body),
       });
 
-      // console.log(util.inspect(response.data, {showHidden: false, depth: null}))
+      console.log(
+        util.inspect(response.data, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
       let ResponseWithoutHeader = await this.handleResonse(response, "rate");
       // console.log(
       //   util.inspect(ResponseWithoutHeader, {

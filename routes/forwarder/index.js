@@ -318,10 +318,10 @@ router.post("/get_users", async (req, res) => {
 });
 
 //获取所有ticket
-router.get("/get_tickets", forwarder.getTickets);
+router.post("/get_tickets", forwarder.getTickets);
 
 //获取单个ticket 详情
-router.get("/get_ticket", forwarder.getTicket);
+router.post("/get_ticket", forwarder.getTicket);
 
 //添加单个ticket 详情
 router.post("/add_ticket", forwarder.addTicket);

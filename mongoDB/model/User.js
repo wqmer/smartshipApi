@@ -26,6 +26,7 @@ var user = new mongoose.Schema({
     status: { type: String, default: "activated" },
     forwarder: { type: Schema.Types.ObjectId, ref: 'Forwarder' },
     type: { type: String, default: 'regular' },
+    billing_type :{ type: String, default: 'prepaid' },
     service: [{ type: Schema.Types.ObjectId, ref: 'Service' }],
     tracking_watchlist: [{ type: String }]
 }, { versionKey: false });
