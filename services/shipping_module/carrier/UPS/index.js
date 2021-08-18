@@ -481,7 +481,7 @@ class UPS extends CarrierClass {
               ? priceObject.TotalCharges.MonetaryValue
               : priceObject.ShipmentCharges.TotalCharges.MonetaryValue;
 
-          total_charge = Negotiated_Charges ? Negotiated_Charges : total_charge;
+          // total_charge = Negotiated_Charges ? Negotiated_Charges : total_charge;
 
           let SurchargeTotal = Array.isArray(priceObject.ItemizedCharges)
             ? priceObject.ItemizedCharges
@@ -601,6 +601,7 @@ class UPS extends CarrierClass {
               weight: billingWeight,
               price: {
                 total: total_charge,
+                NegotiateTotal : Negotiated_Charges,
                 // ups 住宅附加费显示在最外层
                 SurchargeTotal,
                 detail: charge_detail,

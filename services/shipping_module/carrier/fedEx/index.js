@@ -36,6 +36,9 @@ class FEDEX extends CarrierClass {
       case "priority overnight":
         code = "PRIORITY_OVERNIGHT";
         break;
+      case "express saver":
+        code = "FEDEX_EXPRESS_SAVER";
+        break;
       case "standard overnight":
         code = "STANDARD_OVERNIGHT";
         break;
@@ -48,7 +51,7 @@ class FEDEX extends CarrierClass {
       case "ground multiweight":
         code = "FEDEX_GROUND";
         break;
-      default:
+      default:``
         code = "FEDEX_GROUND";
     }
     return code;
