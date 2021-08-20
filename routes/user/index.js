@@ -18,7 +18,6 @@ const chukoula = require("../../services/shipping_module/third_party_api/chukoul
 const PDFMerger = require("pdf-merger-js");
 const ServiceClass = require("../../services/shipping_module/carrier");
 const wb = require("../../services/workBook");
-const rrad = require("rrad");
 const Fakerator = require("fakerator");
 const fakerator = Fakerator();
 const util = require("util");
@@ -1053,74 +1052,6 @@ router.post("/get_tracking", (req, res) => {
     });
 });
 
-//模拟批量
-router.post("/mock_batch_drafts", (req, res) => {
-  let fake_carrier = [
-    "FedEx_ground",
-    "FedEx_2day",
-    "Usps_First_class",
-    "UPS_next_day",
-  ];
-  let fake_order_array = [];
-  let server_status_pool = ["default", "error", "processing"];
-  for (i = 0; i < 500; i++) {
-    let fake_name =
-      fakerator.names.firstName() + " " + fakerator.names.lastName();
-    let fake_company = fakerator.company.name();
-    let fake_address =
-      rrad.addresses[Math.floor(Math.random() * rrad.addresses.length)];
-    let fake_phone_number = fakerator.phone.number();
-    let fake_server_status =
-      server_status_pool[Math.floor(Math.random() * server_status_pool.length)];
-    // console.log(fake_server_status)
-    let order = {
-      service_class: "International_Parcel",
-      customer_order_id: uuid(),
-      order_id: "I" + moment().format("YYYYMMDDHHMM") + shortid.generate(),
-      status: "ready_to_ship",
-      server_status: fake_server_status,
-      sender: {
-        sender_name: "Kimi_mock",
-      },
-      recipient: {
-        Company: fake_company,
-        recipient_name: fake_name,
-        add1: fake_address.address1,
-        add2: fake_address.address2,
-        state: fake_address.state,
-        city: fake_address.city,
-        zipcode: fake_address.postalCode,
-        country: "us",
-        phone_number: fake_phone_number,
-      },
-      parcel: {
-        sku: "product_" + shortid.generate(),
-        weight: Math.floor(Math.random() * (1000 - 100) + 500) / 100,
-        length: Math.floor(Math.random() * (1000 - 100) + 500) / 100,
-        width: Math.floor(Math.random() * (600 - 100) + 500) / 100,
-        height: Math.floor(Math.random() * (600 - 100) + 500) / 100,
-      },
-      carrier: fake_carrier[Math.floor(Math.random() * fake_carrier.length)],
-
-      postage: {
-        estimate_amount: Math.floor(Math.random() * (1500 - 100) + 500) / 100,
-      },
-      forwarder: "5eed9f7ff9ee931e68754fa3", //目前先固定为100008这个个代理
-      // user_id: req.session.user_info.user_id,
-      user: req.session.user_info.user_object_id,
-    };
-    fake_order_array.push(order);
-  }
-
-  Order.insertMany(fake_order_array)
-    .then((result) => {
-      responseClient(res, 200, 0, "batch add draft successfully");
-    })
-    .catch((err) => {
-      console.log(err);
-      responseClient(res);
-    });
-});
 
 //创建运单
 router.post("/create_shipment", async (req, res) => {

@@ -5,7 +5,6 @@ const moment = require("moment");
 var Fakerator = require("fakerator");
 var fakerator = Fakerator();
 var name = fakerator.names.name();
-const rrad = require("rrad");
 const Pusher = require("pusher-js");
 const util = require("util");
 require("dotenv").config();
