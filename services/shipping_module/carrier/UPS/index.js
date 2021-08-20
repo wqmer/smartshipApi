@@ -702,13 +702,13 @@ class UPS extends CarrierClass {
 
       // return response;
 
-      console.log(
-        util.inspect(response, {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect(response, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       let ResponseWithoutHeader = await this.handleResonse(response, "ship");
       // console.log(ResponseWithoutHeader)
       return ResponseWithoutHeader;
