@@ -301,6 +301,12 @@ router.get("/get_order", (req, res) => {
     });
 });
 
+//获取单个订单 by tracking
+router.get("/get_order/:tracking", user.getById);
+
+//获取label url
+router.post("/get_urls", user.getLabelUrls);
+
 //创建草稿订单
 router.post("/create_draft", (req, res) => {
   const {
@@ -495,71 +501,6 @@ router.post("/update_drafts", (req, res) => {
       responseClient(res);
     });
 });
-
-//批量提交订单   ---- 递交待处理订单至远程服务器拿回label数据 ，-----目前为模拟
-// router.post("/mock_submit_order", (req, res) => {
-//   const {
-//     service_class,
-//     order_id,
-//     // status,
-//     sender,
-//     recipient,
-//     carrier,
-//     parcel,
-//     postage,
-//     vendor,
-//   } = req.body;
-
-//   Order.findOne({
-//     order_id,
-//     user_id: req.session.user_info.user_id,
-//   })
-//     .then((data) => {
-//       if (data && data.status != "completed") {
-//         // here to begin submitting order , mock
-//         mock_submit_order(req.body)
-//           .then((response) => {
-//             if (response.code == 0) {
-//               //做测试用，暂不改状态
-//               let update_data = {
-//                 status: "ready_to_ship",
-//               };
-//               Order.findOneAndUpdate(
-//                 { order_id: req.body.order_id },
-//                 update_data,
-//                 { new: true }
-//               )
-//                 .then((result) => {
-//                   responseClient(
-//                     res,
-//                     200,
-//                     0,
-//                     "submit successfully",
-//                     response.data
-//                   );
-//                 })
-//                 .catch((e) => responseClient(res, 500, 3, e));
-//             } else {
-//               responseClient(
-//                 res,
-//                 200,
-//                 1,
-//                 "can not submit order ",
-//                 response.message
-//               );
-//             }
-//           })
-//           .catch((error) =>
-//             responseClient(res, 200, 1, error.message, error.data)
-//           );
-//       } else {
-//         responseClient(res, 200, 1, "order does not exist!");
-//       }
-//     })
-//     .catch((err) => {
-//       responseClient(res);
-//     });
-// });
 
 //预估邮费，返回可用服务渠道和价格
 router.post("/get_service_rate", (req, res) => {
@@ -1052,7 +993,6 @@ router.post("/get_tracking", (req, res) => {
     });
 });
 
-
 //创建运单
 router.post("/create_shipment", async (req, res) => {
   let {
@@ -1062,6 +1002,7 @@ router.post("/create_shipment", async (req, res) => {
     service_information,
     billing_information,
   } = req.body;
+  // console.log(req.body)
   let shipment = req.body;
   try {
     //-------检查客户账户状态----------------------------------------------
@@ -1071,10 +1012,10 @@ router.post("/create_shipment", async (req, res) => {
     });
     let balance = query.balance;
     if (balance <= 0)
-      return responseClient(res, 200, 1, "You have not enough credit");
+      return responseClient(res, 400, 1, "You have not enough credit");
     if (billing_information) {
       if (balance < billing_information.total)
-        return responseClient(res, 200, 1, "You have not enough credit");
+        return responseClient(res, 400, 1, "You have not enough credit");
     }
 
     //检查是否有对应渠道，没有返回res
@@ -1153,7 +1094,11 @@ router.post("/create_shipment", async (req, res) => {
     );
 
     // console.log(util.inspect(shipment, false, null, true /* enable colors */));
-    let result = await service.ship(shipment);
+    //service_information.requestType imporve ruqest performance in Fedex service.
+    let result = await service.ship(
+      shipment,
+      service_information.service_content[0].RateType
+    );
 
     const handleMultiResult = async (result) => {
       // console.log(result)
@@ -1450,6 +1395,8 @@ router.post("/get_ledgers", async (req, res) => {
   }
 });
 
+// router.post("/get_label_urls", req, res) =>{});
+
 //获取地址列表
 router.post("/get_address", async (req, res) => {
   let {
@@ -1558,6 +1505,7 @@ router.post("/update_address", async (req, res) => {
     type,
     nickname,
     first_name,
+    phone_number,
     last_name,
     company,
     address_one,

@@ -38,7 +38,7 @@ module.exports = {
             },
             recipient: {
                 Company: receipant_information.receipant_company,
-                sender_name: receipant_information.receipant_name,
+                recipient_name: receipant_information.receipant_name,
                 add1: receipant_information.receipant_add1,
                 add2: receipant_information.receipant_add2,
                 state: receipant_information.receipant_state,

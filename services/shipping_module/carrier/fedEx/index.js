@@ -51,7 +51,8 @@ class FEDEX extends CarrierClass {
       case "ground multiweight":
         code = "FEDEX_GROUND";
         break;
-      default:``
+      default:
+        ``;
         code = "FEDEX_GROUND";
     }
     return code;
@@ -64,7 +65,8 @@ class FEDEX extends CarrierClass {
     packageCount,
     masterTrackingId,
     unit_length_accepted = "in",
-    unit_weight_accepted = "lb"
+    unit_weight_accepted = "lb",
+    multiFlag = false
   ) {
     let convert_value_weight = this.getConvertFactor(
       shipment.parcel_information.unit_weight,
@@ -394,6 +396,7 @@ class FEDEX extends CarrierClass {
       return result;
     };
 
+    let mutliFlag;
     // console.log(
     //   util.inspect(item, {
     //     showHidden: false,
@@ -453,15 +456,19 @@ class FEDEX extends CarrierClass {
               : undefined;
 
           if (type == "rate") {
-            rateInfo =
-              this.mailClass.toLowerCase() == "ground"
-                ? item.RateReplyDetails[0].RatedShipmentDetails.find(
-                    (item) =>
-                      item.ShipmentRateDetail.RateType ==
-                      "PAYOR_ACCOUNT_PACKAGE"
-                  )
-                : item.RateReplyDetails[0].RatedShipmentDetails[0];
-            // console.log(rateInfo);
+            rateInfo = item.RateReplyDetails[0].RatedShipmentDetails[0];
+            mutliFlag =
+              item.RateReplyDetails[0].RatedShipmentDetails[0]
+                .ShipmentRateDetail.RateType == "PAYOR_ACCOUNT_SHIPMENT"
+                ? "shipment"
+                : "package";
+            // this.mailClass.toLowerCase() == "ground"
+            //   ? item.RateReplyDetails[0].RatedShipmentDetails.find(
+            //       (item) =>
+            //         item.ShipmentRateDetail.RateType ==
+            //         "PAYOR_ACCOUNT_PACKAGE"
+            //     )
+            //   : item.RateReplyDetails[0].RatedShipmentDetails[0];
           } else {
             shipRateInfo =
               item[item.length - 1].CompletedShipmentDetail.ShipmentRating
@@ -470,13 +477,14 @@ class FEDEX extends CarrierClass {
 
           let total_charge =
             type == "ship"
-              ? this.mailClass.toLowerCase() == "ground multiweight"
+              ? this.mailClass.toLowerCase() != "smartpost"
                 ? shipRateInfo.TotalNetFedExCharge.Amount
                 : parseFloat(calTotalAmount)
               : rateInfo.ShipmentRateDetail.TotalNetFedExCharge.Amount;
+
           let billingWeight =
             type == "ship"
-              ? this.mailClass.toLowerCase() == "ground multiweight"
+              ? this.mailClass.toLowerCase() != "smartpost"
                 ? shipRateInfo.TotalBillingWeight.Value
                 : parseFloat(calTotalWeight)
               : rateInfo.ShipmentRateDetail.TotalBillingWeight.Value;
@@ -599,6 +607,7 @@ class FEDEX extends CarrierClass {
               //   length_unit: "inch",
               weight: billingWeight,
               price: {
+                rateType: mutliFlag,
                 total: total_charge,
                 detail: charge_detail,
               },
@@ -668,11 +677,18 @@ class FEDEX extends CarrierClass {
     return response;
   }
 
-  async ship(shipment, url = "ShipService_v23.wsdl") {
+  async ship(shipment, requestType = "shipment", url = "ShipService_v23.wsdl") {
     try {
+      requestType = ["ground home delivery", "smartpost"].includes(
+        this.mailClass.toLowerCase()
+      )
+        ? "package"
+        : requestType;
+
       let client = await soap.createClientAsync(
         path.join(__dirname, "wsdl/production", url)
       );
+
       let packageCount = shipment.parcel_information.parcel_list.length;
       // console.log(
       //   util.inspect(
@@ -694,6 +710,7 @@ class FEDEX extends CarrierClass {
         ...this.authDetail(),
         ...this.shipmentMapRequest(shipment, "ship"),
       });
+
       console.log(
         util.inspect([firstShipment], {
           showHidden: false,
@@ -729,7 +746,7 @@ class FEDEX extends CarrierClass {
         firstShipment.HighestSeverity != "ERROR" &&
         firstShipment.HighestSeverity != "FAILURE"
       ) {
-        if (this.mailClass.toLowerCase() == "ground multiweight") {
+        if (requestType == 'shipment') {
           let {
             sender_information,
             receipant_information,
@@ -873,13 +890,13 @@ class FEDEX extends CarrierClass {
 
       let Response = await this.handleResonse(response, "rate");
 
-      // console.log(
-      //   util.inspect(Response, {
-      //     showHidden: false,
-      //     depth: null,
-      //     colors: true,
-      //   })
-      // );
+      console.log(
+        util.inspect(Response, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
       return Response;
     } catch (error) {
       console.log(error);

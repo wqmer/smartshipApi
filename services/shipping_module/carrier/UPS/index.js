@@ -385,6 +385,7 @@ class UPS extends CarrierClass {
           RatingMethodRequestedIndicator: "",
           ItemizedChargesRequestedIndicator: "",
           TaxInformationIndicator: "",
+          // ShipmentRatingOptions: { NegotiatedRatesIndicator: "" },
           CostCenter: "aaa",
           LabelSpecification: {
             LabelStockSize: { Height: "6" },
@@ -601,7 +602,7 @@ class UPS extends CarrierClass {
               weight: billingWeight,
               price: {
                 total: total_charge,
-                NegotiateTotal : Negotiated_Charges,
+                NegotiateTotal: Negotiated_Charges,
                 // ups 住宅附加费显示在最外层
                 SurchargeTotal,
                 detail: charge_detail,
@@ -670,7 +671,7 @@ class UPS extends CarrierClass {
     return response;
   }
 
-  async ship(shipment, url = "/shipments") {
+  async ship(shipment, requestType = "package", url = "/shipments") {
     // console.log(shipment)
     // console.log(util.inspect(shipment, false, null, true /* enable colors */));
     try {

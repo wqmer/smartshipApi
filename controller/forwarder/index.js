@@ -32,6 +32,7 @@ getTickets = async (req, res) => {
       populate: { path: "user", select: ["user_name", "user_id"] },
       page: req.body.page,
       limit: req.body.limit,
+      sort: "-created_at",
     },
     _.identity
   );

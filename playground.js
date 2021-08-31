@@ -9,7 +9,7 @@ const Pusher = require("pusher-js");
 const util = require("util");
 require("dotenv").config();
 var parser = require("parse-address");
-const serviceClass = require("./services/shipping_module/carrier");
+const serviceClass = require("./services/shipping_module/carrier");ß
 var numeral = require("numeral");
 let imgConvert = require("image-convert");
 const { ACCESS_KEY_ID, SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET, testBase64 } =
@@ -17,7 +17,7 @@ const { ACCESS_KEY_ID, SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET, testBase64 } =
 const ImageUpload = require("./services/AWS/imageUpload");
 var Promise = require("bluebird");
 // let test = '321' || '123'
-
+``
 // console.log(test)
 
 // let a = { x : '1232cons'}
