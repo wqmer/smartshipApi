@@ -89,7 +89,7 @@ getTicket = async (req, res) => {
   let { _id } = req.body;
 
   try {
-    let result = await Ticket.find({
+    let result = await Ticket.findOne({
       _id,
 
       // match: [{ status: "activated" }],
