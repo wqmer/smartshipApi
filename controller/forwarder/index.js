@@ -135,12 +135,6 @@ addTicket = async (req, res) => {
 
 updateTicket = async (req, res) => {
   let { _id, message, supporter, status } = req.body;
-  let status_obj = req.body.status
-    ? {
-        status: req.body.status,
-      }
-    : undefined;
-
   try {
     let result;
     let push_message;
@@ -150,16 +144,28 @@ updateTicket = async (req, res) => {
       push_message = { $push: { messages: result_add_new_message._id } };
     }
 
-    result = await Ticket.updateOne(
-      {
-        _id,
-      },
-      {
-        status_obj,
-        ...push_message,
-        update_at: moment().format("YYYY-MM-DD HH:mm:ss"),
-      }
-    );
+    if (status) {
+      result = await Ticket.updateOne(
+        {
+          _id,
+        },
+        {
+          status,
+          ...push_message,
+          update_at: moment().format("YYYY-MM-DD HH:mm:ss"),
+        }
+      );
+    } else {
+      result = await Ticket.updateOne(
+        {
+          _id,
+        },
+        {
+          ...push_message,
+          update_at: moment().format("YYYY-MM-DD HH:mm:ss"),
+        }
+      );
+    }
 
     if (result.n == 1) {
       responseClient(res, 200, 0, "update ticket success !");
