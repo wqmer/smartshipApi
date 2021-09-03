@@ -135,7 +135,12 @@ addTicket = async (req, res) => {
 
 updateTicket = async (req, res) => {
   let { _id, message, supporter, status } = req.body;
-  status = status ? status : undefined;
+  let status_obj = req.body.status
+    ? {
+        status: req.body.status,
+      }
+    : undefined;
+
   try {
     let result;
     let push_message;
@@ -150,7 +155,7 @@ updateTicket = async (req, res) => {
         _id,
       },
       {
-        status,
+        status_obj,
         ...push_message,
         update_at: moment().format("YYYY-MM-DD HH:mm:ss"),
       }
