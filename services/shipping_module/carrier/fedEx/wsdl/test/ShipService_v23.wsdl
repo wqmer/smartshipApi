@@ -5152,7 +5152,7 @@
           <xs:element name="Options" type="ns:SmartPostShipmentProcessingOptionType" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
       </xs:complexType>
-      <xs:simpleType name="SpecialRatingAppliedType">
+      <xs:simpleType name="FEDEX_ONE_RATE">
         <xs:restriction base="xs:string">
           <xs:enumeration value="FEDEX_ONE_RATE"/>
           <xs:enumeration value="FIXED_FUEL_SURCHARGE"/>

@@ -1522,6 +1522,7 @@ router.post("/update_address", async (req, res) => {
       nickname,
       first_name,
       last_name,
+      phone_number,
       company,
       address_one,
       address_two,
@@ -1531,6 +1532,14 @@ router.post("/update_address", async (req, res) => {
     },
     _.identity
   );
+
+  filter_null.last_name =
+    filter_null.last_name == undefined ? "" : filter_null.last_name;
+  filter_null.company =
+    filter_null.company == undefined ? "" : filter_null.company;
+  filter_null.address_two =
+    filter_null.address_two == undefined ? "" : filter_null.address_two;
+
   try {
     let updateNewAddress = await Address.updateOne(
       { _id, user: req.session.user_info.user_object_id },

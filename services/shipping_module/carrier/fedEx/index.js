@@ -23,6 +23,7 @@ class FEDEX extends CarrierClass {
   }
 
   getSurChargeName = () => {};
+  
 
   getServiceCode = () => {
     let code;
@@ -198,6 +199,13 @@ class FEDEX extends CarrierClass {
           }
         : undefined;
 
+    // let SpecialRatingAppliedType =
+    //   type == "rate"
+    //     ? undefined
+    //     : {
+    //       SpecialRatingAppliedType: "FEDEX_ONE_RATE",
+    //       };
+
     let MasterTrackingId =
       masterTrackingId && this.getServiceCode() != "SMART_POST"
         ? {
@@ -232,21 +240,18 @@ class FEDEX extends CarrierClass {
         Intermediate: 0,
         Minor: 0,
       },
-
+      // VariableOptions:  "FEDEX_ONE_RATE" ,
       RequestedShipment: {
         ShipTimestamp: new Date(date.getTime()).toISOString(),
 
         DropoffType: "REGULAR_PICKUP",
 
-        // ServiceType: receipant_is_residential
-        //   ? this.mailClass.toLowerCase() == "ground multiweight"
-        //     ? "GROUND_HOME_DELIVERY"
-        //     : this.getServiceCode()
-        //   : this.getServiceCode(),
         ServiceType: this.getServiceCode(),
         // ServiceType: ["FEDEX_GROUND", "STANDARD_OVERNIGHT"],
 
         PackagingType: "YOUR_PACKAGING",
+
+        // PackagingType: "FEDEX_PAK",
 
         TotalWeight,
 
@@ -266,7 +271,6 @@ class FEDEX extends CarrierClass {
             CountryCode: "US",
           },
         },
-
         Recipient: {
           Contact: {
             PersonName: receipant_name,
@@ -282,7 +286,6 @@ class FEDEX extends CarrierClass {
             Residential: isRes,
           },
         },
-
         ShippingChargesPayment: {
           PaymentType: "SENDER",
           Payor: {
@@ -291,9 +294,8 @@ class FEDEX extends CarrierClass {
             },
           },
         },
-
         SmartPostDetail,
-
+        // SpecialRatingAppliedType,
         LabelSpecification: {
           LabelFormatType: "COMMON2D",
           ImageType: "PNG",
@@ -746,7 +748,7 @@ class FEDEX extends CarrierClass {
         firstShipment.HighestSeverity != "ERROR" &&
         firstShipment.HighestSeverity != "FAILURE"
       ) {
-        if (requestType == 'shipment') {
+        if (requestType == "shipment") {
           let {
             sender_information,
             receipant_information,
@@ -905,6 +907,236 @@ class FEDEX extends CarrierClass {
       return this.errorMapResopnse(error);
     }
   }
+
+  // test enviroment
+  // async ship(shipment, requestType = "shipment", url = "ShipService_v23.wsdl") {
+  //   try {
+  //     requestType = ["ground home delivery", "smartpost"].includes(
+  //       this.mailClass.toLowerCase()
+  //     )
+  //       ? "package"
+  //       : requestType;
+
+  //     let client = await soap.createClientAsync(
+  //       path.join(__dirname, "wsdl/test", url)
+  //     );
+
+  //     let packageCount = shipment.parcel_information.parcel_list.length;
+  //     // console.log(
+  //     //   util.inspect(
+  //     //     {
+  //     //       ...this.authDetail(),
+  //     //       ...this.shipmentMapRequest(shipment, "ship"),
+  //     //     },
+  //     //     {
+  //     //       showHidden: false,
+  //     //       depth: null,
+  //     //       colors: true,
+  //     //     }
+  //     //   )
+  //     // );
+
+  //     let shipAsync = util.promisify(client.processShipment);
+
+  //     let firstShipment = await shipAsync({
+  //       ...this.authDetail(),
+  //       ...this.shipmentMapRequest(shipment, "ship"),
+  //     });
+
+  //     console.log(
+  //       util.inspect([firstShipment], {
+  //         showHidden: false,
+  //         depth: null,
+  //         colors: true,
+  //       })
+  //     );
+  //     // return [firstShipment];
+  //     let response = [];
+  //     if (shipment.parcel_information.parcel_list.length == 1) {
+  //       response = [firstShipment];
+  //       // return response
+  //       let Response = await this.handleResonse(response, "ship");
+  //       // console.log(
+  //       //   util.inspect(Response, {
+  //       //     showHidden: false,
+  //       //     depth: null,
+  //       //     colors: true,
+  //       //   })
+  //       // );
+  //       return Response;
+  //     }
+  //     // console.log(
+  //     //   util.inspect(firstShipment, {
+  //     //     showHidden: false,
+  //     //     depth: null,
+  //     //     colors: true,
+  //     //   })
+  //     // );
+  //     shipment.parcel_information.parcel_list.shift();
+
+  //     if (
+  //       firstShipment.HighestSeverity != "ERROR" &&
+  //       firstShipment.HighestSeverity != "FAILURE"
+  //     ) {
+  //       if (requestType == "shipment") {
+  //         let {
+  //           sender_information,
+  //           receipant_information,
+  //           parcel_information,
+  //         } = shipment;
+
+  //         for (
+  //           let i = 0;
+  //           i < shipment.parcel_information.parcel_list.length;
+  //           i++
+  //         ) {
+  //           let result = await shipAsync({
+  //             ...this.authDetail(),
+  //             ...this.shipmentMapRequest(
+  //               {
+  //                 sender_information,
+  //                 receipant_information,
+  //                 parcel_information: {
+  //                   ...parcel_information,
+  //                   parcel_list: [shipment.parcel_information.parcel_list[i]],
+  //                 },
+  //               },
+  //               "ship",
+  //               i + 2,
+  //               packageCount,
+  //               firstShipment.CompletedShipmentDetail.MasterTrackingId
+  //                 .TrackingNumber
+  //             ),
+  //           });
+  //           response.push(result);
+  //           // console.log(response.length)
+  //         }
+  //       } else {
+  //         response = await Promise.all(
+  //           await shipment.parcel_information.parcel_list.map(
+  //             async (item, index) => {
+  //               let {
+  //                 sender_information,
+  //                 receipant_information,
+  //                 parcel_information,
+  //               } = shipment;
+  //               shipment.parcel_information.parcel_list = [item];
+  //               let result = await shipAsync({
+  //                 ...this.authDetail(),
+  //                 ...this.shipmentMapRequest(
+  //                   {
+  //                     sender_information,
+  //                     receipant_information,
+  //                     parcel_information,
+  //                   },
+  //                   "ship",
+  //                   index + 2,
+  //                   packageCount,
+  //                   firstShipment.CompletedShipmentDetail.MasterTrackingId
+  //                     .TrackingNumber
+  //                 ),
+  //               });
+  //               // console.log(
+  //               //   util.inspect(result, {
+  //               //     showHidden: false,
+  //               //     depth: null,
+  //               //     colors: true,
+  //               //   })
+  //               // );
+  //               return result;
+  //             }
+  //           )
+  //         );
+  //       }
+  //     } else {
+  //     }
+
+  //     console.log(
+  //       util.inspect(response[response.length - 1], {
+  //         showHidden: false,
+  //         depth: null,
+  //         colors: true,
+  //       })
+  //     );
+  //     (await response).unshift(firstShipment);
+
+  //     // return response;
+
+  //     let Response = await this.handleResonse(response, "ship");
+
+  //     // console.log(
+  //     //   util.inspect(Response, {
+  //     //     showHidden: false,
+  //     //     depth: null,
+  //     //     colors: true,
+  //     //   })
+  //     // );
+  //     return Response;
+  //   } catch (error) {
+  //     console.log(error);
+  //     // return;
+  //     console.log("error happened");
+  //   }
+  // }
+
+  // async rate(shipment, url = "RateService_v24.wsdl") {
+  //   // console.log(shipment)
+  //   try {
+  //     let client = await soap.createClientAsync(
+  //       path.join(__dirname, "wsdl/test", url)
+  //     );
+
+  //     //   console.log(
+  //     //     util.inspect(
+  //     //       {
+  //     //         ...this.authDetail(),
+  //     //         ...this.shipmentMapRequest(shipment),
+  //     //       },
+  //     //       {
+  //     //         showHidden: false,
+  //     //         depth: null,
+  //     //         colors: true,
+  //     //       }
+  //     //     )
+  //     //   );
+
+  //     let getRatesAsync = util.promisify(client.getRates);
+
+  //     let response = await getRatesAsync(
+  //       {
+  //         ...this.authDetail(),
+  //         ...this.shipmentMapRequest(shipment),
+  //       },
+  //       { timeout: 6000 }
+  //     );
+
+  //     console.log(
+  //       util.inspect(response, {
+  //         showHidden: false,
+  //         depth: null,
+  //         colors: true,
+  //       })
+  //     );
+
+  //     // return response;
+
+  //     let Response = await this.handleResonse(response, "rate");
+
+  //     console.log(
+  //       util.inspect(Response, {
+  //         showHidden: false,
+  //         depth: null,
+  //         colors: true,
+  //       })
+  //     );
+  //     return Response;
+  //   } catch (error) {
+  //     console.log(error);
+  //     // return;
+  //     console.log("error happened");
+  //     return this.errorMapResopnse(error);
+  //   }
+  // }
 
   // void = () => {
 

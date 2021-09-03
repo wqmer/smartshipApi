@@ -97,7 +97,7 @@ getTicket = async (req, res) => {
     })
       .populate({
         path: "user",
-        select:['user_name','user_id'],
+        select: ["user_name", "user_id"],
         // match: [{ status: "activated" }],
         // perDocumentLimit: 10,
       })
@@ -135,14 +135,25 @@ addTicket = async (req, res) => {
 
 updateTicket = async (req, res) => {
   let { _id, message, supporter, status } = req.body;
-  let new_message = new Message({ supporter, body: message });
+  status = status ? status : undefined;
   try {
-    let result_add_new_message = await new_message.save();
-    let result = await Ticket.updateOne(
+    let result;
+    let push_message;
+    if (message) {
+      let new_message = new Message({ supporter, body: message });
+      let result_add_new_message = await new_message.save();
+      push_message = { $push: { messages: result_add_new_message._id } };
+    }
+
+    result = await Ticket.updateOne(
       {
         _id,
       },
-      { status, $push: { messages: result_add_new_message._id } }
+      {
+        status,
+        ...push_message,
+        update_at: moment().format("YYYY-MM-DD HH:mm:ss"),
+      }
     );
 
     if (result.n == 1) {
