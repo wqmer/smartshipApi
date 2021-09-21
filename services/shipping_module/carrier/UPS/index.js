@@ -96,67 +96,75 @@ class UPS extends CarrierClass {
   };
 
   calFreightClass = (weight, height, width, length) => {
-    let result = parseFloat(
-      weight / ((height * width * length) / 1728)
-    ).toFixed(2);
-    let freightClass = undefined;
-    switch (true) {
-      case result < 1:
-        freightClass = 500;
-        break;
-      case (result > 1 || result == 1) && result < 2:
-        freightClass = 400;
-        break;
-      case (result > 2 || result == 2) && result < 3:
-        freightClass = 300;
-        break;
-      case (result > 3 || result == 3) && result < 4:
-        freightClass = 250;
-        break;
-      case (result > 4 || result == 4) && result < 5:
-        freightClass = 200;
-        break;
-      case (result > 5 || result == 5) && result < 6:
-        freightClass = 175;
-        break;
-      case (result > 6 || result == 6) && result < 7:
-        freightClass = 150;
-        break;
-      case (result > 7 || result == 7) && result < 8:
-        freightClass = 125;
-        break;
-      case (result > 8 || result == 8) && result < 9:
-        freightClass = 110;
-        break;
-      case (result > 9 || result == 9) && result < 10.5:
-        freightClass = 100;
-        break;
-      case (result > 10.5 || result == 10.5) && result < 12:
-        freightClass = 92.5;
-        break;
-      case (result > 12 || result == 12) && result < 13.5:
-        freightClass = 85;
-        break;
-      case (result > 13.5 || result == 13.5) && result < 15:
-        freightClass = 77.5;
-        break;
-      case (result > 15 || result == 15) && result < 22.5:
-        freightClass = 70;
-        break;
-      case (result > 22.5 || result == 22.5) && result < 30:
-        freightClass = 65;
-        break;
-      case (result > 30 || result == 30) && result < 35:
-        freightClass = 60;
-        break;
-      case (result > 35 || result == 35) && result < 50:
-        freightClass = 55;
-        break;
-      case result > 50:
-        freightClass = 50;
-        break;
+    try {
+      let result = parseFloat(
+        weight / ((height * width * length) / 1728)
+      ).toFixed(2);
+      let freightClass = undefined;
+      switch (true) {
+        case result < 1:
+          freightClass = 500;
+          break;
+        case (result > 1 || result == 1) && result < 2:
+          freightClass = 400;
+          break;
+        case (result > 2 || result == 2) && result < 3:
+          freightClass = 300;
+          break;
+        case (result > 3 || result == 3) && result < 4:
+          freightClass = 250;
+          break;
+        case (result > 4 || result == 4) && result < 5:
+          freightClass = 200;
+          break;
+        case (result > 5 || result == 5) && result < 6:
+          freightClass = 175;
+          break;
+        case (result > 6 || result == 6) && result < 7:
+          freightClass = 150;
+          break;
+        case (result > 7 || result == 7) && result < 8:
+          freightClass = 125;
+          break;
+        case (result > 8 || result == 8) && result < 9:
+          freightClass = 110;
+          break;
+        case (result > 9 || result == 9) && result < 10.5:
+          freightClass = 100;
+          break;
+        case (result > 10.5 || result == 10.5) && result < 12:
+          freightClass = 92.5;
+          break;
+        case (result > 12 || result == 12) && result < 13.5:
+          freightClass = 85;
+          break;
+        case (result > 13.5 || result == 13.5) && result < 15:
+          freightClass = 77.5;
+          break;
+        case (result > 15 || result == 15) && result < 22.5:
+          freightClass = 70;
+          break;
+        case (result > 22.5 || result == 22.5) && result < 30:
+          freightClass = 65;
+          break;
+        case (result > 30 || result == 30) && result < 35:
+          freightClass = 60;
+          break;
+        case (result > 35 || result == 35) && result < 50:
+          freightClass = 55;
+          break;
+        case result > 50:
+          freightClass = 50;
+          break;
+        default:
+          freightClass = 50;
+      }
+
+      return freightClass;
+      // console.log(freightClass);
+    } catch (error) {
+      return 50;
     }
-    return freightClass;
   };
 
   shipmentMapRequest(
@@ -369,7 +377,6 @@ class UPS extends CarrierClass {
               CountryCode: "US",
             },
           },
-
           Service: {
             Code: this.getServiceCode(),
             Description: this.mailClass,
@@ -435,7 +442,7 @@ class UPS extends CarrierClass {
         // status: item.status ? item.status : 503,
         message: item.code ? item.code : "No response from remote",
         data: {
-          package_key: JSON.parse(item.config.data).package_key,
+          // package_key: JSON.parse(item.config.data).package_key,
           order_id: undefined,
           asset: {
             code: this.asset.code,
@@ -452,7 +459,7 @@ class UPS extends CarrierClass {
     }
   }
 
-  async handleResonse(item, type = "ship") {
+  async handleResonse(item, type = "ship", requestType = "shipment") {
     let response = {};
     let extra;
     // console.log("I got response!");
@@ -703,14 +710,18 @@ class UPS extends CarrierClass {
 
       // return response;
 
-      // console.log(
-      //   util.inspect(response, {
-      //     showHidden: false,
-      //     depth: null,
-      //     colors: true,
-      //   })
-      // );
-      let ResponseWithoutHeader = await this.handleResonse(response, "ship");
+      console.log(
+        util.inspect(response, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
+      let ResponseWithoutHeader = await this.handleResonse(
+        response,
+        "ship",
+        requestType
+      );
       // console.log(ResponseWithoutHeader)
       return ResponseWithoutHeader;
     } catch (error) {
@@ -766,9 +777,9 @@ class UPS extends CarrierClass {
       // );
       return ResponseWithoutHeader;
     } catch (error) {
-      console.log(error);
+      // console.log(error);
       // return;
-      console.log("error happened");
+      // console.log("error happened");
       return this.errorMapResopnse(error);
     }
   }

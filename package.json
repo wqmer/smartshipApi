@@ -29,6 +29,7 @@
     "lodash": "^4.17.15",
     "migrate-mongoose": "^3.2.2",
     "moment": "^2.23.0",
+    "moment-timezone": "^0.5.33",
     "mongoose": "^5.10.6",
     "mongoose-aggregate-paginate-v2": "^1.0.2",
     "mongoose-beautiful-unique-validation": "^7.1.1",

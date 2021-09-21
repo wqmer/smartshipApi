@@ -10,6 +10,7 @@ const moment = require("moment");
 const _ = require("lodash");
 const rp = require("request-promise");
 const EventEmitter = require("events");
+const config = require("../../config/dev");
 const chukoula = require("../../services/shipping_module/third_party_api/chukoula");
 const { responseClient, md5, MD5_SUFFIX } = require("../util");
 
@@ -180,6 +181,24 @@ router.use((req, res, next) => {
         responseClient(res, 401, 1, "Session ended , please login again")
       );
 });
+
+
+
+//获取所有carrier账号
+router.post("/get_carriers", forwarder.getCarriers);
+
+//获取一个carrier账号
+router.post("/get_carrier", forwarder.getCarrier);
+
+//添加carrier账号
+router.post("/add_carrier", forwarder.addCarrier);
+
+//更新一个账号
+router.put("/update_carrier", forwarder.updateCarrier);
+
+//删除一个账号
+router.post("/delete_carrier", forwarder.deleteCarrier);
+
 
 //添加服务
 router.post("/add_service", async (req, res) => {

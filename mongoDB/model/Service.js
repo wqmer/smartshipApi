@@ -25,6 +25,7 @@ var service = new mongoose.Schema(
     },
     rate: [{ type: Schema.Types.ObjectId, ref: "Rate" }],
     auth_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    activated_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
     forwarder: { type: Schema.Types.ObjectId, ref: "Forwarder" },
     status: { type: String, default: "activated" },
   },

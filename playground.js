@@ -9,143 +9,104 @@ const Pusher = require("pusher-js");
 const util = require("util");
 require("dotenv").config();
 var parser = require("parse-address");
-const serviceClass = require("./services/shipping_module/carrier");ß
+const serviceClass = require("./services/shipping_module/carrier");
 var numeral = require("numeral");
 let imgConvert = require("image-convert");
 const { ACCESS_KEY_ID, SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET, testBase64 } =
   process.env;
 const ImageUpload = require("./services/AWS/imageUpload");
 var Promise = require("bluebird");
-// let test = '321' || '123'
-``
-// console.log(test)
+var _ = require("lodash");
 
-// let a = { x : '1232cons'}
-
-// console.log(a.b && a.b.c)
-
-let pakList = [
+let Package_array = [
   {
-    key: "first_pak",
-    pack_info: {
-      height: "6",
-      length: "4",
-      width: "1",
-      order_id: "1",
-      reference: "1",
-      same_pack: "1",
-      weight: 12,
-    },
+    nborderid: "OS586test0NT8",
+    xh: "1",
+    boxnote: "",
+    boxno: "1",
+    weight: "9.070",
+    length: "25.40",
+    width: "25.40",
+    height: "25.40",
+    totalvalue: "1.00",
+  },
+  {
+    nborderid: "OS586test0NT8",
+    xh: "2",
+    boxnote: "",
+    boxno: "2",
+    weight: "9.070",
+    length: "25.40",
+    width: "25.40",
+    height: "25.40",
+    totalvalue: "1.00",
+  },
+  {
+    nborderid: "OS586test0NT8",
+    xh: "3",
+    boxnote: "",
+    boxno: "3",
+    weight: "9.070",
+    length: "25.40",
+    width: "25.40",
+    height: "25.40",
+    totalvalue: "1.00",
+  },
+  {
+    nborderid: "OS586test0NT8",
+    xh: "4",
+    boxnote: "",
+    boxno: "4",
+    weight: "2",
+    length: "2",
+    width: "2",
+    height: "22",
+    totalvalue: "1.00",
+  },
+  {
+    nborderid: "OS586test0NT8",
+    xh: "5",
+    boxnote: "",
+    boxno: "5",
+    weight: "1",
+    length: "1",
+    width: "1",
+    height: "1",
+    totalvalue: "1.00",
+  },
+  {
+    nborderid: "OS586test0NT8",
+    xh: "6",
+    boxnote: "",
+    boxno: "6",
+    weight: "1",
+    length: "1",
+    width: "1",
+    height: "1",
+    totalvalue: "1.00",
   },
 ];
 
-for (i = 0; i < 10; i++) {
-  pakList.push({
-    key: "first_pak",
-    pack_info: {
-      height: "8",
-      length: "8",
-      width: "4",
-      order_id: "1",
-      reference: "1",
-      same_pack: "1",
-      weight: 15,
-    },
-  });
-}
+let result = _.groupBy(Package_array, (item) => [
+  [item["weight"], item["length"], item["width"], item["height"]],
+]);
 
-const test_shipment = {
-  sender_information: {
-    sender_add1: "2850 kelvin ave , apt 123",
-    sender_city: "Irvine",
-    sender_company: "SmartshipLLC",
-    sender_name: "QIMIN",
-    sender_phone_number: "2155880271",
-    sender_state: "CA",
-    sender_zip_code: "92614",
-  },
-  receipant_information: {
-    receipant_add1: "12510 Micro Dr",
-    receipant_city: "Mira Loma",
-    receipant_name: "Kimi",
-    receipant_phone_number: "2155880271",
-    receipant_state: "CA",
-    receipant_zip_code: "91752",
-    receipant_is_residential: true,
-  },
-  parcel_information: {
-    parcel_list: pakList,
-  },
-};
+// 需要这样的格式
+// {
+//   "Weight": "0.280",
+//   "Number": "10",
+//   "Length": "0.280",
+//   "Width": "2.54",
+//   "Height": "2.54"
+// }
+let boxesToSubmit = Object.values(result).map((item) => {
+  return {
+    Weight: item[0].weight,
+    Number: item.length,
+    Length: item[0].length,
+    Width: item[0].width,
+    Height: item[0].height,
+  };
+});
 
-const FEDEX = serviceClass("FEDEX");
-
-const fedex = new FEDEX(
-  account_information,
-  "test",
-  "discount",
-  "carrier",
-  "ground home delivery",
-  // "ground multiweight",
-  ""
-);
-
-let GetCustomResultMasterTracking = (result) =>
-  result.map((e) => e.CompletedShipmentDetail.MasterTrackingId.TrackingNumber);
-
-let GetResult = (result, index) => {
-  if (index == "max") return result[result.length - 1];
-  return result[index];
-};
-
-let testFun = async () => {
-  try {
-    let result = await fedex.rate(test_shipment);
-
-    // console.log(result)
-
-    // let urlArray = await Promise.map(result, async (item, index) => {
-    //   let url = await ImageUpload(
-    //     item.CompletedShipmentDetail.CompletedPackageDetails[0].Label.Parts[0].Image,
-    //     item.CompletedShipmentDetail.CompletedPackageDetails[0].TrackingIds[0].TrackingNumber,
-    //     "png",
-    //     false,
-    //     false
-    //   );
-
-    //   let obj = {
-    //     label: [url],
-    //     tracking_numbers: [item.TrackingNumber],
-    //     weight: item.BillingWeight,
-    //     postage: {
-    //       billing_amount: {
-    //         baseCharges: item.BaseServiceCharge.MonetaryValue,
-    //         surCharges: item.ItemizedCharges,
-    //       },
-    //     },
-    //   };
-
-    //   return obj;
-    // });
-
-    // console.log(urlArray)
-    console.log(
-      util.inspect(result, {
-        showHidden: false,
-        depth: null,
-        colors: true,
-      })
-    );
-    // console.log(
-    //   util.inspect(GetResult(result, "max"), {
-    //     showHidden: false,
-    //     depth: null,
-    //     colors: true,
-    //   })
-    // );
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-testFun();
+console.log(boxesToSubmit)

@@ -11,6 +11,8 @@ const path = require("path");
 const date = new Date();
 const delay = require("delay");
 
+
+
 class FEDEX extends CarrierClass {
   constructor(account, apiEndPoint, discount, carrier, mailClass, asset = {}) {
     super();
@@ -23,7 +25,31 @@ class FEDEX extends CarrierClass {
   }
 
   getSurChargeName = () => {};
-  
+
+  // responseSechema = (rateType) => {
+  //   let total_charge =
+  //     type == "ship"
+  //       ? requestType == "shipment"
+  //         ? shipRateInfo.TotalNetFedExCharge.Amount
+  //         : parseFloat(calTotalAmount)
+  //       : rateInfo.ShipmentRateDetail.TotalNetFedExCharge.Amount;
+
+  //   let billingWeight =
+  //     type == "ship"
+  //       ? requestType == "shipment"
+  //         ? shipRateInfo.TotalBillingWeight.Value
+  //         : parseFloat(calTotalWeight)
+  //       : rateInfo.ShipmentRateDetail.TotalBillingWeight.Value;
+
+  //   let packagesRateDetail =
+  //     type == "ship"
+  //       ? item.map(
+  //           (item) =>
+  //             item.CompletedShipmentDetail.CompletedPackageDetails[0]
+  //               .PackageRating.PackageRateDetails[0]
+  //         )
+  //       : rateInfo.RatedPackages;
+  // };
 
   getServiceCode = () => {
     let code;
@@ -140,14 +166,14 @@ class FEDEX extends CarrierClass {
             Height: Math.ceil(parseFloat(height)),
             Units: "IN",
           },
-          // CustomerReferences: {
-          //   CustomerReferenceType: "P_O_NUMBER",
-          //   Value: item.reference_1,
-          // },
-          // CustomerReferences: {
-          //   CustomerReferenceType: "CUSTOMER_REFERENCE",
-          //   Value:  item.pack_info.reference_2,
-          // },
+          CustomerReferences: {
+            CustomerReferenceType: "P_O_NUMBER",
+            Value: item.reference_1,
+          },
+          CustomerReferences: {
+            CustomerReferenceType: "CUSTOMER_REFERENCE",
+            Value: item.pack_info.reference_2,
+          },
 
           CustomerReferences,
         };
@@ -186,6 +212,8 @@ class FEDEX extends CarrierClass {
       this.getServiceCode() == "GROUND_HOME_DELIVERY"
         ? true
         : false;
+
+    let SpecialServicesRequested = { SpecialServiceTypes: "FEDEX_ONE_RATE" };
 
     let SmartPostDetail =
       this.getServiceCode() == "SMART_POST"
@@ -240,14 +268,13 @@ class FEDEX extends CarrierClass {
         Intermediate: 0,
         Minor: 0,
       },
-      // VariableOptions:  "FEDEX_ONE_RATE" ,
+      // VariableOptions: ["FEDEX_ONE_RATE"],
       RequestedShipment: {
         ShipTimestamp: new Date(date.getTime()).toISOString(),
 
         DropoffType: "REGULAR_PICKUP",
 
         ServiceType: this.getServiceCode(),
-        // ServiceType: ["FEDEX_GROUND", "STANDARD_OVERNIGHT"],
 
         PackagingType: "YOUR_PACKAGING",
 
@@ -271,6 +298,7 @@ class FEDEX extends CarrierClass {
             CountryCode: "US",
           },
         },
+
         Recipient: {
           Contact: {
             PersonName: receipant_name,
@@ -286,6 +314,7 @@ class FEDEX extends CarrierClass {
             Residential: isRes,
           },
         },
+
         ShippingChargesPayment: {
           PaymentType: "SENDER",
           Payor: {
@@ -294,8 +323,11 @@ class FEDEX extends CarrierClass {
             },
           },
         },
+
+        // SpecialServicesRequested,
+
         SmartPostDetail,
-        // SpecialRatingAppliedType,
+
         LabelSpecification: {
           LabelFormatType: "COMMON2D",
           ImageType: "PNG",
@@ -388,7 +420,7 @@ class FEDEX extends CarrierClass {
     };
   }
 
-  async handleResonse(item, type = "ship") {
+  async handleResonse(item, type = "ship", requestType = "shipment") {
     let response = {};
     let extra;
     // console.log("I got response!");
@@ -399,32 +431,11 @@ class FEDEX extends CarrierClass {
     };
 
     let mutliFlag;
-    // console.log(
-    //   util.inspect(item, {
-    //     showHidden: false,
-    //     depth: null,
-    //     colors: true,
-    //   })
-    // );
-    //当方法是ship时，需要判断两种情况，主单号是否成功，和子单号是否都成功
-    // let isScuss =
-    //   type == "rate"
-    //     ? item.HighestSeverity == "SUCCESS" || item.HighestSeverity == "NOTE"
-    //     : (!item.map((e) => e.Severity).includes("ERROR") &&
-    //         !item.map((e) => e.Severity).includes("FAILURE")) ||
-    //       (item.HighestSeverity != "ERROR" &&
-    //         item.HighestSeverity != "FAILURE");
 
     let isScuss =
       type == "rate"
         ? item.HighestSeverity != "ERROR" && item.HighestSeverity != "FAILURE"
-        : // : !(item.map((e) => e.Notifications[0].Severity).includes("ERROR") &&
-          //     !item
-          //       .map((e) => e.Notifications[0].Severity)
-          //       .includes("FAILURE")) ||
-          //   (item.HighestSeverity != "ERROR" &&
-          //     item.HighestSeverity != "FAILURE");
-          item.every(
+        : item.every(
             (e) =>
               e.HighestSeverity != "ERROR" && e.HighestSeverity != "FAILURE"
           );
@@ -433,106 +444,206 @@ class FEDEX extends CarrierClass {
         try {
           let rateInfo;
           let shipRateInfo;
-          let calTotalAmount =
-            type == "ship"
-              ? item
-                  .map(
-                    (item) =>
-                      item.CompletedShipmentDetail.CompletedPackageDetails[0]
-                        .PackageRating.PackageRateDetails[0].NetFedExCharge
-                        .Amount
-                  )
-                  .reduce((a, c) => a + c)
-                  .toFixed(2)
-              : undefined;
-          let calTotalWeight =
-            type == "ship"
-              ? item
-                  .map(
-                    (item) =>
-                      item.CompletedShipmentDetail.CompletedPackageDetails[0]
-                        .PackageRating.PackageRateDetails[0].BillingWeight.Value
-                  )
-                  .reduce((a, c) => a + c)
-                  .toFixed(2)
-              : undefined;
-
-          if (type == "rate") {
-            rateInfo = item.RateReplyDetails[0].RatedShipmentDetails[0];
-            mutliFlag =
-              item.RateReplyDetails[0].RatedShipmentDetails[0]
-                .ShipmentRateDetail.RateType == "PAYOR_ACCOUNT_SHIPMENT"
-                ? "shipment"
-                : "package";
-            // this.mailClass.toLowerCase() == "ground"
-            //   ? item.RateReplyDetails[0].RatedShipmentDetails.find(
-            //       (item) =>
-            //         item.ShipmentRateDetail.RateType ==
-            //         "PAYOR_ACCOUNT_PACKAGE"
-            //     )
-            //   : item.RateReplyDetails[0].RatedShipmentDetails[0];
-          } else {
-            shipRateInfo =
-              item[item.length - 1].CompletedShipmentDetail.ShipmentRating
-                .ShipmentRateDetails[0];
-          }
-
-          let total_charge =
-            type == "ship"
-              ? this.mailClass.toLowerCase() != "smartpost"
-                ? shipRateInfo.TotalNetFedExCharge.Amount
-                : parseFloat(calTotalAmount)
-              : rateInfo.ShipmentRateDetail.TotalNetFedExCharge.Amount;
-
-          let billingWeight =
-            type == "ship"
-              ? this.mailClass.toLowerCase() != "smartpost"
-                ? shipRateInfo.TotalBillingWeight.Value
-                : parseFloat(calTotalWeight)
-              : rateInfo.ShipmentRateDetail.TotalBillingWeight.Value;
-          let packagesRateDetail =
-            type == "ship"
-              ? item.map(
-                  (item) =>
-                    item.CompletedShipmentDetail.CompletedPackageDetails[0]
-                      .PackageRating.PackageRateDetails[0]
-                )
-              : rateInfo.RatedPackages;
-
-          // console.log(packagesRateDetail);
-
+          let calTotalWeight;
+          let calTotalAmount;
+          let total_charge;
+          let billingWeight;
+          let packagesRateDetail;
           let charge_detail;
-          if (!packagesRateDetail) {
-            charge_detail = [
-              {
-                package_key: undefined,
-                baseCharges: rateInfo.ShipmentRateDetail.TotalNetFreight.Amount,
-                surCharges: rateInfo.ShipmentRateDetail.Surcharges,
-                totalCharges: total_charge,
-                BillingWeight: billingWeight,
-              },
-            ];
-          } else {
-            charge_detail = selectArrayOrObject(packagesRateDetail).map(
-              (item, index) => {
-                if (type == "rate") item = item.PackageRateDetail;
-                let newItem = {
+          let tracking_array;
+
+          if (requestType == "oneRate") {
+            calTotalAmount =
+              type == "ship"
+                ? item
+                    .map(
+                      (item) =>
+                        item.CompletedShipmentDetail.CompletedPackageDetails[0]
+                          .PackageRating.PackageRateDetails[0].NetFedExCharge
+                          .Amount
+                    )
+                    .reduce((a, c) => a + c)
+                    .toFixed(2)
+                : undefined;
+
+            // calTotalWeight =
+            //   type == "ship"
+            //     ? item
+            //         .map(
+            //           (item) =>
+            //             item.CompletedShipmentDetail.CompletedPackageDetails[0]
+            //               .PackageRating.PackageRateDetails[0].BillingWeight
+            //               .Value
+            //         )
+            //         .reduce((a, c) => a + c)
+            //         .toFixed(2)
+            //     : undefined;
+
+            if (type == "rate") {
+              rateInfo = item.RateReplyDetails[0].RatedShipmentDetails[0];
+              mutliFlag =
+                item.RateReplyDetails[0].RatedShipmentDetails[0]
+                  .ShipmentRateDetail.RateType == "PAYOR_ACCOUNT_SHIPMENT"
+                  ? "shipment"
+                  : "package";
+            } else {
+              shipRateInfo =
+                item[item.length - 1].CompletedShipmentDetail.ShipmentRating
+                  .ShipmentRateDetails[0];
+            }
+
+            total_charge =
+              type == "ship"
+                ? calTotalAmount
+                : rateInfo.ShipmentRateDetail.TotalNetFedExCharge.Amount;
+
+            // billingWeight =
+            //   type == "ship"
+            //     ? requestType == "shipment"
+            //       ? shipRateInfo.TotalBillingWeight.Value
+            //       : parseFloat(calTotalWeight)
+            //     : rateInfo.ShipmentRateDetail.TotalBillingWeight.Value;
+
+            packagesRateDetail =
+              type == "ship"
+                ? item.map(
+                    (item) =>
+                      item.CompletedShipmentDetail.CompletedPackageDetails[0]
+                        .PackageRating.PackageRateDetails[0]
+                  )
+                : rateInfo.RatedPackages;
+
+            // console.log(packagesRateDetail);
+            if (!packagesRateDetail) {
+              charge_detail = [
+                {
                   package_key: undefined,
-                  baseCharges: item.NetFreight.Amount,
-                  surCharges: item.Surcharges,
-                  totalCharges: item.NetFedExCharge
-                    ? item.NetFedExCharge.Amount
-                    : undefined,
-                  BillingWeight: item.BillingWeight
-                    ? item.BillingWeight.Value
-                    : undefined,
-                };
-                return newItem;
-              }
-            );
+                  baseCharges:
+                    rateInfo.ShipmentRateDetail.TotalNetFreight.Amount,
+                  // surCharges: rateInfo.ShipmentRateDetail.Surcharges,
+                  totalCharges: total_charge,
+                  BillingWeight: billingWeight,
+                },
+              ];
+            } else {
+              charge_detail = selectArrayOrObject(packagesRateDetail).map(
+                (item, index) => {
+                  if (type == "rate") item = item.PackageRateDetail;
+                  let newItem = {
+                    package_key: undefined,
+                    baseCharges: item.NetFreight.Amount,
+                    // surCharges: [item.TotalSurcharges],
+                    totalCharges: item.NetFedExCharge
+                      ? item.NetFedExCharge.Amount
+                      : undefined,
+                    BillingWeight: item.BillingWeight
+                      ? item.BillingWeight.Value
+                      : undefined,
+                  };
+                  return newItem;
+                }
+              );
+            }
+          } else {
+            calTotalAmount =
+              type == "ship"
+                ? item
+                    .map(
+                      (item) =>
+                        item.CompletedShipmentDetail.CompletedPackageDetails[0]
+                          .PackageRating.PackageRateDetails[0].NetFedExCharge
+                          .Amount
+                    )
+                    .reduce((a, c) => a + c)
+                    .toFixed(2)
+                : undefined;
+            calTotalWeight =
+              type == "ship"
+                ? item
+                    .map(
+                      (item) =>
+                        item.CompletedShipmentDetail.CompletedPackageDetails[0]
+                          .PackageRating.PackageRateDetails[0].BillingWeight
+                          .Value
+                    )
+                    .reduce((a, c) => a + c)
+                    .toFixed(2)
+                : undefined;
+
+            if (type == "rate") {
+              rateInfo = item.RateReplyDetails[0].RatedShipmentDetails[0];
+              mutliFlag =
+                item.RateReplyDetails[0].RatedShipmentDetails[0]
+                  .ShipmentRateDetail.RateType == "PAYOR_ACCOUNT_SHIPMENT"
+                  ? "shipment"
+                  : "package";
+            } else {
+              // 如果是shipment 的计价方式需要用 最后一个包裹来结算总价
+              shipRateInfo =
+                item[item.length - 1].CompletedShipmentDetail.ShipmentRating
+                  .ShipmentRateDetails[0];
+            }
+
+            total_charge =
+              type == "ship"
+                ? requestType == "shipment"
+                  ? shipRateInfo.TotalNetFedExCharge.Amount
+                  : parseFloat(calTotalAmount)
+                : rateInfo.ShipmentRateDetail.TotalNetFedExCharge.Amount;
+
+            billingWeight =
+              type == "ship"
+                ? requestType == "shipment"
+                  ? shipRateInfo.TotalBillingWeight.Value
+                  : parseFloat(calTotalWeight)
+                : rateInfo.ShipmentRateDetail.TotalBillingWeight.Value;
+
+            packagesRateDetail =
+              type == "ship"
+                ? item.map(
+                    (item) =>
+                      item.CompletedShipmentDetail.CompletedPackageDetails[0]
+                        .PackageRating.PackageRateDetails[0]
+                  )
+                : rateInfo.RatedPackages;
+
+            // console.log(packagesRateDetail);
+
+            charge_detail;
+            if (!packagesRateDetail) {
+              charge_detail = [
+                {
+                  package_key: undefined,
+                  baseCharges:
+                    rateInfo.ShipmentRateDetail.TotalNetFreight.Amount,
+                  surCharges: rateInfo.ShipmentRateDetail.Surcharges,
+                  totalCharges: total_charge,
+                  BillingWeight: billingWeight,
+                },
+              ];
+            } else {
+              charge_detail = selectArrayOrObject(packagesRateDetail).map(
+                (item, index) => {
+                  if (type == "rate") item = item.PackageRateDetail;
+                  let newItem = {
+                    package_key: undefined,
+                    baseCharges: item.NetFreight.Amount,
+                    surCharges: item.Surcharges,
+                    totalCharges: item.NetFedExCharge
+                      ? item.NetFedExCharge.Amount
+                      : undefined,
+                    BillingWeight: item.BillingWeight
+                      ? item.BillingWeight.Value
+                      : undefined,
+                  };
+                  return newItem;
+                }
+              );
+            }
           }
 
-          let tracking_array =
+          //shipping section
+          tracking_array =
             type == "ship"
               ? selectArrayOrObject(item).map(
                   (e) =>
@@ -540,14 +651,6 @@ class FEDEX extends CarrierClass {
                       .TrackingIds[0].TrackingNumber
                 )
               : [];
-
-          // let pl =
-          //   type == "ship"
-          //     ? await ImageUploadClusterMode(
-          //         selectArrayOrObject(packagesRateDetail),
-          //         "LabelWorker"
-          //       )
-          //     : undefined;
 
           extra =
             type == "ship"
@@ -570,9 +673,11 @@ class FEDEX extends CarrierClass {
                           .TrackingIds[0].TrackingNumber,
                       ],
                       weight:
-                        e.CompletedShipmentDetail.CompletedPackageDetails[0]
-                          .PackageRating.PackageRateDetails[0].BillingWeight
-                          .Value,
+                        requestType == "oneRate"
+                          ? undefined
+                          : e.CompletedShipmentDetail.CompletedPackageDetails[0]
+                              .PackageRating.PackageRateDetails[0].BillingWeight
+                              .Value,
                       postage: {
                         billing_amount: {
                           baseCharges:
@@ -588,12 +693,6 @@ class FEDEX extends CarrierClass {
 
                     return obj;
                   }),
-                  // parcel_list: pl.sort((a, b) => {
-                  //   return (
-                  //     tracking_array.indexOf(a.tracking_numbers[0]) -
-                  //     tracking_array.indexOf(b.tracking_numbers[0])
-                  //   );
-                  // }),
                 }
               : undefined;
 
@@ -613,8 +712,6 @@ class FEDEX extends CarrierClass {
                 total: total_charge,
                 detail: charge_detail,
               },
-              // label_image:item.data.base64_labels.map((lables_image ,index )=> base64Img.imgSync('data:image/png;base64,'+ lables_image, 'labels', 'test'+ Math.random())),
-              // asset is the data form server-side
               asset: {
                 logo_url: this.asset.logo_url,
                 name: this.asset.nick_name,
@@ -821,18 +918,18 @@ class FEDEX extends CarrierClass {
       } else {
       }
 
-      console.log(
-        util.inspect(response[response.length - 1], {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect(response[response.length - 1], {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       (await response).unshift(firstShipment);
 
       // return response;
 
-      let Response = await this.handleResonse(response, "ship");
+      let Response = await this.handleResonse(response, "ship", requestType);
 
       // console.log(
       //   util.inspect(Response, {
@@ -856,19 +953,19 @@ class FEDEX extends CarrierClass {
         path.join(__dirname, "wsdl/production", url)
       );
 
-      //   console.log(
-      //     util.inspect(
-      //       {
-      //         ...this.authDetail(),
-      //         ...this.shipmentMapRequest(shipment),
-      //       },
-      //       {
-      //         showHidden: false,
-      //         depth: null,
-      //         colors: true,
-      //       }
-      //     )
-      //   );
+      // console.log(
+      //   util.inspect(
+      //     {
+      //       ...this.authDetail(),
+      //       ...this.shipmentMapRequest(shipment),
+      //     },
+      //     {
+      //       showHidden: false,
+      //       depth: null,
+      //       colors: true,
+      //     }
+      //   )
+      // );
 
       let getRatesAsync = util.promisify(client.getRates);
 
@@ -880,25 +977,25 @@ class FEDEX extends CarrierClass {
         { timeout: 6000 }
       );
 
-      console.log(
-        util.inspect(response, {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect(response, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
 
       // return response;
 
       let Response = await this.handleResonse(response, "rate");
 
-      console.log(
-        util.inspect(Response, {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect(Response, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       return Response;
     } catch (error) {
       console.log(error);
