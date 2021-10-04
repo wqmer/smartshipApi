@@ -182,8 +182,6 @@ router.use((req, res, next) => {
       );
 });
 
-
-
 //获取所有carrier账号
 router.post("/get_carriers", forwarder.getCarriers);
 
@@ -196,9 +194,11 @@ router.post("/add_carrier", forwarder.addCarrier);
 //更新一个账号
 router.put("/update_carrier", forwarder.updateCarrier);
 
+//更新一个账号状态
+router.put("/update_carrier_status", forwarder.upsateCarrierStatus);
+
 //删除一个账号
 router.post("/delete_carrier", forwarder.deleteCarrier);
-
 
 //添加服务
 router.post("/add_service", async (req, res) => {

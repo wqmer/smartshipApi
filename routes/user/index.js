@@ -304,7 +304,6 @@ router.get("/get_order", (req, res) => {
 //获取单个订单 by tracking
 router.get("/get_order/:tracking", user.getById);
 
-
 //获取label url
 router.post("/get_urls", user.getLabelUrls);
 
@@ -843,18 +842,16 @@ router.post("/get_carriers", async (req, res) => {
     });
 });
 
-//获取单个 carrier 列表
+//获取单个 carrier
+router.post("/get_carrier", user.getCarrier);
 
-
-
-
+//更新一个carrier
 router.post("/update_carrier", async (req, res) => {
   let { _id, asset } = req.body;
   try {
     let carrier = {
       asset: {
         ...asset,
-        nick_name: asset.nick_name || type,
       },
     };
 
@@ -878,6 +875,7 @@ router.post("/update_carrier", async (req, res) => {
   }
 });
 
+//更新一个carrier状态
 router.put("/update_carrier_status", async (req, res) => {
   let { _id, status } = req.body;
   try {
@@ -899,6 +897,7 @@ router.put("/update_carrier_status", async (req, res) => {
   }
 });
 
+//删除一个carrier
 router.post("/delete_carrier", async (req, res) => {
   let { _id } = req.body;
   Carrier.deleteOne({
@@ -1212,7 +1211,7 @@ router.post("/create_shipment", async (req, res) => {
         response_status = 1;
         response_message = "订单失败," + "第三方服务报错： " + result.message;
       } else {
-        // ups data return 
+        // ups data return
         total_fee = result.data.price.NegotiateTotal
           ? result.data.price.NegotiateTotal
           : result.data.price.total;
@@ -1483,6 +1482,10 @@ router.post("/add_address", async (req, res) => {
     state,
     is_residential,
   } = req.body;
+
+  company = company ? company : "";
+  last_name = last_name ? last_name : "";
+
   try {
     let tempData = new Address({
       type,

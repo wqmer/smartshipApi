@@ -31,7 +31,7 @@ getCarriers = async (req, res) => {
   const query = _.pickBy(
     {
       // "$text":text,
-      forwarder: req.session.forwarder_info.forwarder_object_id,
+      user: req.session.user_info.user_object_id,
       //   user: req.session.user_info.user_object_id,
       ...filter,
     },
@@ -86,7 +86,7 @@ getCarrier = async (req, res) => {
   try {
     let result = await Carrier.findOne({
       _id,
-      forwarder: req.session.forwarder_info.forwarder_object_id,
+      user: req.session.user_info.user_object_id,
       // match: [{ status: "activated" }],
       // select: ['-rate'],
     });
@@ -113,8 +113,7 @@ addCarrier = async (req, res) => {
         logo_url: config.LOGO[type],
         request_url: config.URL[type],
       },
-      agent: "Smartship",
-      forwarder: req.session.forwarder_info.forwarder_object_id,
+      user: req.session.user_info.user_object_id,
     });
     let result = await carrier.save();
     // console.log(result)
@@ -126,9 +125,7 @@ addCarrier = async (req, res) => {
 };
 
 updateCarrier = async (req, res) => {
-  let { _id, asset } = req.body;
-
-  let current_nick_name;
+  let { _id, asset, status } = req.body;
 
   // let options = _.pickBy(
   //   {
@@ -139,17 +136,10 @@ updateCarrier = async (req, res) => {
   // );
 
   try {
-    let carrier = {
-      asset: {
-        ...asset,
-        nick_name: asset.nick_name || type,
-      },
-    };
-
     let result = await Carrier.updateOne(
       {
         _id,
-        forwarder: req.session.forwarder_info.forwarder_object_id,
+        user: req.session.user_info.user_object_id,
       },
       {
         $set: {
@@ -169,32 +159,11 @@ updateCarrier = async (req, res) => {
   }
 };
 
-upsateCarrierStatus = async (req, res) => {
-  let { _id, status } = req.body;
-  try {
-    let result = await Carrier.updateOne(
-      {
-        _id,
-        forwarder: req.session.forwarder_info.forwarder_object_id,
-      },
-      { status }
-    );
-
-    // console.log(result)
-    result.n == 1
-      ? responseClient(res, 200, 0, "Update carrier account successfully")
-      : responseClient(res, 404, 1, "No carrier account found");
-  } catch (error) {
-    responseClient(res);
-    console.log(error);
-  }
-};
-
 deleteCarrier = async (req, res) => {
   let { _id } = req.body;
   Carrier.deleteOne({
     _id,
-    forwarder: req.session.forwarder_info.forwarder_object_id,
+    user: req.session.user_info.user_object_id,
   })
     .then((result) => {
       if (result.n === 1) {
@@ -213,6 +182,5 @@ module.exports = {
   getCarrier,
   addCarrier,
   updateCarrier,
-  upsateCarrierStatus,
   deleteCarrier,
 };
