@@ -654,10 +654,10 @@ router.post("/get_rate", async (req, res) => {
               service_max_weight) // True , if service was not set a Max_weight or parcel's weight smaller than Max_weight
       );
 
-      let address_type_invaild = true;
+      let address_type_vaild = true;
 
       if (is_res === true) {
-        address_type_invaild =
+        address_type_vaild =
           is_res_only === undefined ||
           is_res_only === true ||
           (is_bus_only === undefined && is_res_only === undefined) ||
@@ -665,7 +665,7 @@ router.post("/get_rate", async (req, res) => {
       }
 
       if (is_res === false) {
-        address_type_invaild =
+        address_type_vaild =
           is_bus_only === undefined ||
           is_bus_only === true ||
           (is_bus_only === undefined && is_res_only === undefined) ||
@@ -674,7 +674,7 @@ router.post("/get_rate", async (req, res) => {
 
       // let is_bus_invalid = is_res !== true && is_bus_only !== false;
 
-      return is_every_pack_in_range && address_type_invaild;
+      return is_every_pack_in_range && address_type_vaild;
     };
 
     // console.log(serviceAfterFlat);
@@ -773,74 +773,7 @@ router.post("/add_carrier", async (req, res) => {
 });
 
 //获取所有 carrier 列表
-router.post("/get_carriers", async (req, res) => {
-  let {
-    // text,
-    page,
-    limit,
-    filter,
-  } = req.body;
-
-  //分页
-  let options = _.pickBy(
-    {
-      page: req.body.page,
-      limit: req.body.limit,
-    },
-    _.identity
-  );
-
-  const query = _.pickBy(
-    {
-      // "$text":text,
-      // forwarder: req.session.forwarder_info.forwarder_object_id,
-      user: req.session.user_info.user_object_id,
-      ...filter,
-    },
-    _.identity
-  );
-
-  if (req.body.limit == undefined) {
-    options.pagination = false;
-    // options.select = 'order_id -_id'
-  }
-  //查询范围
-  let query_field = [
-    "user",
-    // "customer_order_id",
-    // "recipient.recipient_name",
-    // "recipient.add1",
-    // "recipient.add2",
-    // "recipient.state",
-    // "recipient.city"
-  ];
-
-  //添加到模糊查询
-  if (req.body.searching_string) {
-    query["$or"] = [];
-    for (let i = 0; i < query_field.length; i++) {
-      let object = {};
-      object[query_field[i]] = {
-        $regex: req.body.searching_string,
-        $options: "i",
-      };
-      query["$or"].push(object);
-    }
-  }
-
-  // console.log(query)
-  // console.log(options)
-
-  Carrier.paginate(query, options)
-    .then(function (result) {
-      // console.log(result)
-      responseClient(res, 200, 0, "query data success !", result);
-    })
-    .catch((err) => {
-      console.log(err);
-      responseClient(res);
-    });
-});
+router.post("/get_carriers", user.getCarriers);
 
 //获取单个 carrier
 router.post("/get_carrier", user.getCarrier);
@@ -900,91 +833,33 @@ router.put("/update_carrier_status", async (req, res) => {
 //删除一个carrier
 router.post("/delete_carrier", async (req, res) => {
   let { _id } = req.body;
-  Carrier.deleteOne({
-    _id,
-    user: req.session.user_info.user_object_id,
-  })
-    .then((result) => {
-      if (result.n === 1) {
-        responseClient(res, 200, 0, "delete successfully!");
-      } else {
-        responseClient(res, 404, 1, "Carrier account does not exist!");
-      }
-    })
-    .catch((err) => {
-      responseClient(res);
-    });
-});
-
-router.post("/add_service", async (req, res) => {
-  // find carrier 账号 ，为某个账号添加服务
-  let { carrier, mail_class, type, description, ship_parameters } = req.body;
-  let service = new Service({
-    carrier,
-    mail_class,
-    description,
-    ship_parameters,
-    type, // prepare for 3rd agent
-  });
-  let result_add = await service.save();
-  let result_update = await Carrier.update(
-    { _id: carrier },
-    { $push: { service: result_add._id } }
-  );
-
-  if (result_update.n === 1) {
-    responseClient(res, 200, 0, "Add successfully!", result_add);
-  } else {
-    responseClient(res, 404, 1, "Failed to add!");
-  }
-});
-
-router.post("/get_service", (req, res) => {
-  //返回所有可用渠道
-  let { carrier } = req.body;
-  Carrier.find({
-    _id: carrier,
-    user: req.session.user_info.user_object_id,
-    // status: "activated",
-    // $or: [
-    //   { auth_group: { $in: req.session.user_info.user_id } },
-    //   { _id: carrier },
-    //   { user: req.session.user_info.user_object_id },
-    //   { auth_group: { $in: req.session.user_info.user_id } },
-    // ],
-    // match: [],
-    // select: ['-rate'],
-  })
-    .populate("service")
-    .then((result) => {
-      // console.log(result);
-      responseClient(res, 200, 0, "Get service successfully", result);
-    })
-    .catch((error) => responseClient(res));
-});
-
-//更新渠道
-router.put("/update_service", async (req, res) => {
-  //
-  const { status, _id } = req.body;
 
   try {
-    let result = await Service.updateOne(
-      {
-        _id,
-      },
-      { status }
-    );
+    let result = await Carrier.deleteOne({
+      _id,
+      user: req.session.user_info.user_object_id,
+    });
 
-    // console.log(result)
-    result.n == 1
-      ? responseClient(res, 200, 0, "Update service successfully")
-      : responseClient(res, 404, 1, "No service found");
+    if (result.n == 1) {
+      await Service.deleteMany({ carrier: _id });
+      responseClient(res, 200, 0, "delete successfully!");
+    } else {
+      responseClient(res, 404, 1, "Carrier account does not exist!");
+    }
   } catch (error) {
-    responseClient(res);
     console.log(error);
+    responseClient(res, 500, 1);
   }
 });
+
+//添加渠道
+router.post("/add_service", user.addService);
+
+//获取渠道
+router.post("/get_service", user.getServices);
+
+//更新渠道
+router.put("/update_service", user.updateService);
 
 //查询tracking
 router.post("/get_tracking", (req, res) => {

@@ -74,10 +74,6 @@ const getLabelUrls = async (req, res) => {
   }
 };
 
-
-
-
-
 module.exports = {
   addressValidate,
   getById,

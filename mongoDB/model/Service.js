@@ -27,6 +27,7 @@ var service = new mongoose.Schema(
     auth_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
     activated_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
     forwarder: { type: Schema.Types.ObjectId, ref: "Forwarder" },
+    user: { type: Schema.Types.ObjectId, ref: "User" },
     status: { type: String, default: "activated" },
   },
   { versionKey: false }

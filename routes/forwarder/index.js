@@ -201,53 +201,17 @@ router.put("/update_carrier_status", forwarder.upsateCarrierStatus);
 router.post("/delete_carrier", forwarder.deleteCarrier);
 
 //添加服务
-router.post("/add_service", async (req, res) => {
-  let {
-    asset,
-    rate,
-    agent,
-    carrier,
-    mail_class,
-    ship_parameters,
-    api_parameters,
-  } = req.body;
+router.post("/add_service", forwarder.addService);
 
-  console.log(req.body);
-
-  // if (!name) responseClient(res, 200, 1, '请输入渠道名字')
-  try {
-    if (rate) {
-      let tempRate = new Rate({ ...rate });
-      let result = await tempRate.save();
-      rate = [result._id];
-    }
-
-    let tempService = new Service({
-      // ...req.body,
-      asset: {
-        ...asset,
-        code: "s" + shortid.generate(),
-      },
-      api_parameters,
-      rate,
-      carrier,
-      agent,
-      mail_class,
-      ship_parameters,
-      forwarder: req.session.forwarder_info.forwarder_object_id,
-    });
-    let result = await tempService.save();
-    result
-      ? responseClient(res, 200, 0, "添加成功", result)
-      : responseClient(res, 401, 1, "添加失败", result);
-  } catch (error) {
-    console.log(error);
-    responseClient(res);
-  }
-});
+//获取一个账号下服务
+router.post("/get_service", forwarder.getServices);
 
 //更新一个服务
-router.post("/update_service", async (req, res) => {});
+router.put("/update_service", forwarder.updateService);
+
+
+
+
 
 //为一个服务添加报价
 router.post("/add_rate", async (req, res) => {});

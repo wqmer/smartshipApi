@@ -11,8 +11,6 @@ const path = require("path");
 const date = new Date();
 const delay = require("delay");
 
-
-
 class FEDEX extends CarrierClass {
   constructor(account, apiEndPoint, discount, carrier, mailClass, asset = {}) {
     super();
@@ -59,6 +57,9 @@ class FEDEX extends CarrierClass {
         break;
       case "ground home delivery":
         code = "GROUND_HOME_DELIVERY";
+        break;
+      case "first overnight":
+        code = "FIRST_OVERNIGHT";
         break;
       case "priority overnight":
         code = "PRIORITY_OVERNIGHT";

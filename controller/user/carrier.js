@@ -37,14 +37,13 @@ getCarriers = async (req, res) => {
     },
     _.identity
   );
-
+  options.select = "-asset.account_information";
   if (req.body.limit == undefined) {
     options.pagination = false;
-    options.select = "-asset.account_information";
   }
   //查询范围
   let query_field = [
-    "forwarder",
+    "user",
     // "customer_order_id",
     // "recipient.recipient_name",
     // "recipient.add1",
@@ -72,7 +71,7 @@ getCarriers = async (req, res) => {
   Carrier.paginate(query, options)
     .then(function (result) {
       // console.log(result)
-      responseClient(res, 200, 0, "query data success !", result.docs);
+      responseClient(res, 200, 0, "query data success !", result);
     })
     .catch((err) => {
       console.log(err);
@@ -161,20 +160,23 @@ updateCarrier = async (req, res) => {
 
 deleteCarrier = async (req, res) => {
   let { _id } = req.body;
-  Carrier.deleteOne({
-    _id,
-    user: req.session.user_info.user_object_id,
-  })
-    .then((result) => {
-      if (result.n === 1) {
-        responseClient(res, 200, 0, "delete successfully!");
-      } else {
-        responseClient(res, 404, 1, "Carrier account does not exist!");
-      }
-    })
-    .catch((err) => {
-      responseClient(res);
+
+  try {
+    let result = await Carrier.deleteOne({
+      _id,
+      user: req.session.user_info.user_object_id,
     });
+
+    if (result.n == 1) {
+      await Service.deleteMany({ carrier: _id });
+      responseClient(res, 200, 0, "delete successfully!");
+    } else {
+      responseClient(res, 404, 1, "Carrier account does not exist!");
+    }
+  } catch (error) {
+    console.log(error);
+    responseClient(res, 500, 1);
+  }
 };
 
 module.exports = {
