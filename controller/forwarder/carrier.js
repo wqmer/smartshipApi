@@ -31,8 +31,8 @@ const getCarriers = async (req, res) => {
   const query = _.pickBy(
     {
       // "$text":text,
-      // forwarder: req.session.forwarder_info.forwarder_object_id,
-        user: req.session.user_info.user_object_id,
+      forwarder: req.session.forwarder_info.forwarder_object_id,
+      // user: req.session.user_info.user_object_id,
       ...filter,
     },
     _.identity
@@ -43,7 +43,8 @@ const getCarriers = async (req, res) => {
   }
   //查询范围
   let query_field = [
-    "user",
+    "forwarder",
+    // "user",
     // "customer_order_id",
     // "recipient.recipient_name",
     // "recipient.add1",
