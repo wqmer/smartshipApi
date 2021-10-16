@@ -86,7 +86,7 @@ const getCarrier = async (req, res) => {
   try {
     let result = await Carrier.findOne({
       _id,
-      user: req.session.user_info.user_object_id,
+      forwarder: req.session.forwarder_info.forwarder_object_id,
       // match: [{ status: "activated" }],
       // select: ['-rate'],
     });
