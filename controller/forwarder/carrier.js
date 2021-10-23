@@ -9,6 +9,9 @@ const shortid = require("shortid");
 const moment = require("moment");
 const _ = require("lodash");
 const config = require("../../config/dev");
+const mongoose = require("mongoose");
+const util = require("../util");
+
 const { responseClient, md5, MD5_SUFFIX } = require("../util");
 
 const getCarriers = async (req, res) => {
@@ -104,22 +107,54 @@ const getCarrier = async (req, res) => {
 const addCarrier = async (req, res) => {
   let { type, asset } = req.body;
   try {
-    let carrier = new Carrier({
-      type,
-      asset: {
-        ...asset,
-        nick_name: asset.nick_name || type,
-        code: type + "@" + shortid.generate(),
-        logo_url: config.LOGO[type],
-        request_url: config.URL[type],
-      },
-      agent: "Smartship",
-      forwarder: req.session.forwarder_info.forwarder_object_id,
-    });
-    let result = await carrier.save();
-    // console.log(result)
-    responseClient(res, 200, 0, "Add carrier account successfully", result);
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      let carrier = new Carrier({
+        type,
+        asset: {
+          ...asset,
+          nick_name: asset.nick_name || type,
+          code: type + "@" + shortid.generate(),
+          logo_url: config.LOGO[type],
+          request_url: config.URL[type],
+        },
+        agent: "Smartship",
+        forwarder: req.session.forwarder_info.forwarder_object_id,
+      });
+      let resultOfCarrier = await carrier.save();
+      let newServices = util.serviceList(type).map((item) => {
+        return {
+          carrier: resultOfCarrier._id,
+          ship_parameters: util.serviceMapShipPara(type, item.mail_class),
+          ...item,
+          type: item.type,
+          forwarder: req.session.forwarder_info.forwarder_object_id,
+        };
+      });
+
+      let resultOfServices = await Service.insertMany(newServices);
+      // console.log(resultOfServices);
+      let result_update = await Carrier.updateMany(
+        { _id: resultOfCarrier._id },
+        { service: resultOfServices.map((item) => item._id) }
+      );
+      //结束事务;
+      if (result_update.n === 1) {
+        await session.commitTransaction();
+        session.endSession();
+        responseClient(res, 200, 0, "Add carrier account successfully");
+      } else {
+        throw new Error("Failed to add!");
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      responseClient(res, 400, 1, "Failed to add");
+    }
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     responseClient(res);
     console.log(error);
   }

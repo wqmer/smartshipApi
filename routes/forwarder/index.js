@@ -209,6 +209,9 @@ router.post("/get_service", forwarder.getServices);
 //更新一个服务
 router.put("/update_service", forwarder.updateService);
 
+//获取一个账号下服务的授权使用状态
+router.post("/get_serivce_auth_status", forwarder.getServicesAuthStatus);
+
 
 
 
@@ -222,15 +225,6 @@ router.post("/add_rate", async (req, res) => {});
 
 //获取所有客户
 router.post("/get_users", async (req, res) => {
-  // try {
-  //     console.log(req.body)
-  //     const data = await User.find()
-  //     responseClient(res, 200, 0, 'Fetch user success!', data)
-  // } catch (error) {
-  //     console.log(error)
-  //     responseClient(res);
-  // }
-
   let {
     // text,
     page,
@@ -286,7 +280,7 @@ router.post("/get_users", async (req, res) => {
     }
   }
 
-  console.log(query);
+  // console.log(query);
   // console.log(options)
 
   User.paginate(query, options)

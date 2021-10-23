@@ -87,6 +87,84 @@ module.exports = {
     return para;
   },
 
+  serviceList: function (type) {
+    let list;
+
+    switch (true) {
+      case type.toLowerCase() == "fedex":
+        list = [
+          {
+            mail_class: "Ground",
+            status: "unactivated",
+            description: "1-5 days",
+          },
+          {
+            mail_class: "Ground Home Delivery",
+            status: "unactivated",
+            description: "1-5 days",
+          },
+          {
+            mail_class: "Smartpost",
+            status: "unactivated",
+            description: "1-7 days",
+          },
+          {
+            mail_class: "Express Saver",
+            status: "unactivated",
+            description: "1-3 days",
+          },
+          {
+            mail_class: "2 day",
+            status: "unactivated",
+            description: "1-2 days",
+          },
+          {
+            mail_class: "First Overnight",
+            status: "unactivated",
+            description: "1 day, before 9:30 AM",
+          },
+          {
+            mail_class: "Priority Overnight",
+            status: "unactivated",
+            description: "1 day, before 10:30 AM",
+          },
+          {
+            mail_class: "Standard Overnight",
+            status: "unactivated",
+            description: "1 day, before 3:30 PM",
+          },
+        ];
+        break;
+      case type.toLowerCase() == "ups":
+        list = [
+          {
+            mail_class: "Ground",
+            status: "uncreated",
+            description: "1-5 days",
+          },
+          {
+            mail_class: "Next Day Air",
+            status: "uncreated",
+            description: "1 day",
+          },
+          {
+            mail_class: "2nd Day Air",
+            status: "uncreated",
+            description: "2 days",
+          },
+          {
+            mail_class: "Ground Freight",
+            status: "uncreated",
+            description: "1-5 days",
+          },
+        ];
+        break;
+      default:
+        list = [];
+    }
+
+    return list;
+  },
   //request
   // sender_information:
   // font_type: "warning"
