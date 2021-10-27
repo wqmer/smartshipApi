@@ -19,64 +19,83 @@ getCarriers = async (req, res) => {
     filter,
   } = req.body;
 
-  //分页
-  let options = _.pickBy(
-    {
-      page: req.body.page,
-      limit: req.body.limit,
-    },
-    _.identity
-  );
+  try {
+    //分页
+    let options = _.pickBy(
+      {
+        page: req.body.page,
+        limit: req.body.limit,
+      },
+      _.identity
+    );
 
-  const query = _.pickBy(
-    {
-      // "$text":text,
-      user: req.session.user_info.user_object_id,
-      //   user: req.session.user_info.user_object_id,
-      ...filter,
-    },
-    _.identity
-  );
-  options.select = "-asset.account_information";
-  if (req.body.limit == undefined) {
-    options.pagination = false;
-  }
-  //查询范围
-  let query_field = [
-    "user",
-    // "customer_order_id",
-    // "recipient.recipient_name",
-    // "recipient.add1",
-    // "recipient.add2",
-    // "recipient.state",
-    // "recipient.city"
-  ];
-
-  //添加到模糊查询
-  if (req.body.searching_string) {
-    query["$or"] = [];
-    for (let i = 0; i < query_field.length; i++) {
-      let object = {};
-      object[query_field[i]] = {
-        $regex: req.body.searching_string,
-        $options: "i",
-      };
-      query["$or"].push(object);
+    const query = _.pickBy(
+      {
+        // "$text":text,
+        user: req.session.user_info.user_object_id,
+        //   user: req.session.user_info.user_object_id,
+        ...filter,
+      },
+      _.identity
+    );
+    options.select = "-asset.account_information";
+    if (req.body.limit == undefined) {
+      options.pagination = false;
     }
-  }
+    //查询范围
+    let query_field = [
+      "user",
+      // "customer_order_id",
+      // "recipient.recipient_name",
+      // "recipient.add1",
+      // "recipient.add2",
+      // "recipient.state",
+      // "recipient.city"
+    ];
 
-  // console.log(query)
-  // console.log(options)
+    //添加到模糊查询
+    // if (req.body.searching_string) {
+    //   query["$or"] = [];
+    //   for (let i = 0; i < query_field.length; i++) {
+    //     let object = {};
+    //     object[query_field[i]] = {
+    //       $regex: req.body.searching_string,
+    //       $options: "i",
+    //     };
+    //     query["$or"].push(object);
+    //   }
+    // }
+    // query["$or"] = [];
+    // query["$or"] = [{ user: req.session.user_info.user_object_id }, {
 
-  Carrier.paginate(query, options)
-    .then(function (result) {
-      // console.log(result)
-      responseClient(res, 200, 0, "query data success !", result);
-    })
-    .catch((err) => {
-      console.log(err);
-      responseClient(res);
+    // }];
+    console.log(query);
+    // console.log(options)
+
+    let resultOfF = await Service.find(
+      {
+        auth_group: { $in: req.session.user_info.user_object_id },
+      },
+      "-ship_parameters -rate -auth_group -activated_group -status -_id -mail_class -description -forwarder"
+    ).populate({
+      path: "carrier",
+      select: "-asset.account_information",
     });
+    
+    console.log(
+      _.uniqBy(
+        resultOfF.map((e) => e.carrier),
+        "-id"
+      )
+    );
+
+    let resultOfU = await Carrier.paginate(query, options);
+    // console.log(result)
+    responseClient(res, 200, 0, "query data success !", resultOfU);
+  } catch (error) {
+    console.log(error);
+    responseClient(res);
+  }
 };
 
 getCarrier = async (req, res) => {

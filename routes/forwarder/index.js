@@ -212,6 +212,8 @@ router.put("/update_service", forwarder.updateService);
 //获取一个账号下服务的授权使用状态
 router.post("/get_serivce_auth_status", forwarder.getServicesAuthStatus);
 
+//更新一个客户的服务状态
+router.put("/update_service_auth_status", forwarder.updateUserService);
 
 
 

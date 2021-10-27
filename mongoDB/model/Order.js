@@ -81,6 +81,11 @@ var order = new mongoose.Schema(
       estimate_amount: { type: SchemaTypes.Double },
       billing_amount: Object,
     },
+
+    charge_fee: { type: Number },
+
+    transaction: [{ type: Schema.Types.ObjectId, ref: "Transaction" }],
+
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",

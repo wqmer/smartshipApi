@@ -1,4 +1,5 @@
 var crypto = require("crypto");
+var Schema = require("validate");
 
 module.exports = {
   MD5_SUFFIX: "dsfsdssdeckdkekekkcckckckcckodododc,sdmeoeeoidjs~kEWICCJD",
@@ -164,6 +165,45 @@ module.exports = {
     }
 
     return list;
+  },
+
+  voidRepsonseScheme: function (type) {
+    try {
+      let scheme;
+      switch (true) {
+        case type.toLowerCase() == "fedex":
+          scheme = 12;
+          break;
+        case type.toLowerCase() == "ups":
+          scheme = new Schema({
+            VoidShipmentResponse: {
+              Response: {
+                ResponseStatus: {
+                  Code: {
+                    type: String,
+                    required: true,
+                  },
+                  Description: {
+                    type: String,
+                    required: true,
+                  },
+                },
+                TransactionReference: {
+                  CustomerContext: {
+                    type: String,
+                    required: true,
+                  },
+                },
+              },
+            },
+          });
+          break;
+        default:
+          scheme = 456;
+      }
+
+      return scheme;
+    } catch (error) {}
   },
   //request
   // sender_information:

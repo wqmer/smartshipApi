@@ -1216,6 +1216,9 @@ router.post("/create_shipment", async (req, res) => {
   }
 });
 
+//作废运单
+router.post("/void_shipment" , user.voidShipment)
+
 //账簿 筛选，模糊查询，分页
 router.post("/get_ledgers", async (req, res) => {
   let {
@@ -1277,8 +1280,6 @@ router.post("/get_ledgers", async (req, res) => {
     responseClient(res);
   }
 });
-
-// router.post("/get_label_urls", req, res) =>{});
 
 //获取地址列表
 router.post("/get_address", async (req, res) => {

@@ -6,6 +6,9 @@ var base64Img = require("base64-img");
 var ImageUpload = require("../../../AWS/imageUpload");
 var ImageUploadClusterMode = require("./Cluster/master");
 const util = require("util");
+const { timeStamp } = require("console");
+const { UpsCIEEndpoint } = process.env;
+
 
 class UPS extends CarrierClass {
   constructor(account, apiEndPoint, discount, carrier, mailClass, asset = {}) {
@@ -17,6 +20,22 @@ class UPS extends CarrierClass {
     this.mailClass = mailClass;
     this.asset = asset;
   }
+
+  authHeaderCIE = () => {
+    let obj = {
+      UPSSecurity: {
+        UsernameToken: {
+          Username: this.account.Username,
+          Password: this.account.Password,
+        },
+        ServiceAccessToken: {
+          AccessLicenseNumber:
+            this.account.AccessLicenseNumber || this.account.AccessKey,
+        },
+      },
+    };
+    return obj;
+  };
 
   getSurChargeName = () => {
     // 100 ADDITIONAL HANDLING 110 COD
@@ -678,6 +697,29 @@ class UPS extends CarrierClass {
     return response;
   }
 
+  async handleCIEResponse(item, type = "void") {
+    try {
+      let response;
+      switch (item.status) {
+        case 200 || 201:
+          response = {
+            status: item.status,
+            message: "void done ！",
+            data: item.data,
+          };
+          break;
+
+        default:
+          response = {
+            status: 500,
+            message: "No Response",
+            data: item.data,
+          };
+      }
+      return response;
+    } catch (error) {}
+  }
+
   async ship(shipment, requestType = "package", url = "/shipments") {
     // console.log(shipment)
     // console.log(util.inspect(shipment, false, null, true /* enable colors */));
@@ -784,9 +826,39 @@ class UPS extends CarrierClass {
     }
   }
 
-  // void = () => {
-
-  // }
+  async void(tracking, url = "/Void") {
+    try {
+  
+      let requst_body = {
+        VoidShipmentRequest: {
+          Request: {
+            TransactionReference: {
+              CustomerContext: "Your Customer Context",
+            },
+          },
+          VoidShipment: {
+            ShipmentIdentificationNumber: tracking[0],
+          },
+        },
+      };
+      // console.log(JSON.stringify({ ...this.authHeaderCIE(), ...requst_body }));
+      const response = await axios({
+        method: "post",
+        url: UpsCIEEndpoint + url,
+        timeout: 6000,
+        headers: {
+          "content-type": "application/json",
+        },
+        data: JSON.stringify({ ...this.authHeaderCIE(), ...requst_body }),
+      });
+      // console.log(response)
+      
+      return this.handleCIEResponse(response);
+    } catch (error) {
+      // console.log(error);
+      return;
+    }
+  }
 
   // track = () => {
 

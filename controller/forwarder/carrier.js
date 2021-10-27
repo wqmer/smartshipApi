@@ -110,6 +110,7 @@ const addCarrier = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+      const opts = { session, new: true };
       let carrier = new Carrier({
         type,
         asset: {
@@ -122,7 +123,7 @@ const addCarrier = async (req, res) => {
         agent: "Smartship",
         forwarder: req.session.forwarder_info.forwarder_object_id,
       });
-      let resultOfCarrier = await carrier.save();
+      let resultOfCarrier = await carrier.save(opts);
       let newServices = util.serviceList(type).map((item) => {
         return {
           carrier: resultOfCarrier._id,
@@ -133,11 +134,12 @@ const addCarrier = async (req, res) => {
         };
       });
 
-      let resultOfServices = await Service.insertMany(newServices);
+      let resultOfServices = await Service.insertMany(newServices, opts);
       // console.log(resultOfServices);
       let result_update = await Carrier.updateMany(
         { _id: resultOfCarrier._id },
-        { service: resultOfServices.map((item) => item._id) }
+        { service: resultOfServices.map((item) => item._id) },
+        opts
       );
       //结束事务;
       if (result_update.n === 1) {

@@ -31,10 +31,11 @@ const addService = async (req, res) => {
         type,
         forwarder: req.session.forwarder_info.forwarder_object_id,
       });
-      let result_add = await service.save();
+      let result_add = await service.save(opts);
       let result_update = await Carrier.update(
         { _id: carrier },
-        { $push: { service: result_add._id } }
+        { $push: { service: result_add._id } },
+        opts
       );
       //结束事务;
       if (result_update.n === 1) {
@@ -169,7 +170,6 @@ const getServicesAuthStatus = async (req, res) => {
       },
       "-asset"
     ).populate({ path: "service", select: "_id mail_class rate " });
-
     console.log(result_service);
     if (result_service.service.length == 0) {
       responseClient(res, 404, 1, "No service !");
@@ -250,9 +250,91 @@ const getServicesAuthStatus = async (req, res) => {
   }
 };
 
+const updateUserService = async (req, res) => {
+  let { service, user, action } = req.body;
+  try {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const opts = { session, new: true };
+      let result_user;
+      let result_service;
+      if (action == "enable") {
+        result_user = await User.updateOne(
+          {
+            _id: user,
+            // forwarder: req.session.forwarder_info.forwarder_object_id,
+          },
+          { $addToSet: { service: { $each: service } } },
+          opts
+        );
+        // console.log(result_user);
+        if (result_user.n != 1) {
+          throw new Error("Fail to update due to data inconsistency from user");
+        }
+        result_service = await Service.updateMany(
+          {
+            _id: { $in: service },
+            forwarder: req.session.forwarder_info.forwarder_object_id,
+          },
+          { $push: { auth_group: user } },
+          opts
+        );
+        if (result_service.n != service.length) {
+          throw new Error(
+            "Fail to update due to data inconsistency from service"
+          );
+        }
+      } else if (action == "disable") {
+        // console.log(req.session.forwarder_info.forwarder_object_id);
+        result_user = await User.updateOne(
+          {
+            _id: user,
+            // forwarder: req.session.forwarder_info.forwarder_object_id,
+          },
+          { $pull: { service: { $in: service } } },
+          opts
+        );
+        // console.log(result_user);
+        if (result_user.n != 1) {
+          throw new Error("Fail to update due to data inconsistency from user");
+        }
+        result_service = await Service.updateMany(
+          {
+            _id: { $in: service },
+            forwarder: req.session.forwarder_info.forwarder_object_id,
+          },
+          { $pull: { auth_group: user } },
+          opts
+        );
+        if (result_service.n != service.length) {
+          throw new Error(
+            "Fail to update due to data inconsistency from service"
+          );
+        }
+      } else {
+        throw new Error("Incorrect action !");
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+      responseClient(res, 200, 0, "update successfully!");
+    } catch (error) {
+      console.log(error);
+      await session.abortTransaction();
+      session.endSession();
+      responseClient(res, 400, 1, "Faile to update !");
+    }
+  } catch (error) {
+    console.log(error);
+    responseClient(res);
+  }
+};
+
 module.exports = {
   addService,
   updateService,
   getServices,
   getServicesAuthStatus,
+  updateUserService,
 };
