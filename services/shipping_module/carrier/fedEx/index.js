@@ -4,7 +4,6 @@ var Promise = require("bluebird");
 var base64Img = require("base64-img");
 var ImageUpload = require("../../../AWS/imageUpload");
 // var ImageUploadClusterMode = require("./Cluster/master");
-var Promise = require("bluebird");
 const util = require("util");
 const soap = require("soap");
 const path = require("path");
@@ -881,39 +880,37 @@ class FEDEX extends CarrierClass {
           }
         } else {
           response = await Promise.all(
-            await shipment.parcel_information.parcel_list.map(
-              async (item, index) => {
-                let {
-                  sender_information,
-                  receipant_information,
-                  parcel_information,
-                } = shipment;
-                shipment.parcel_information.parcel_list = [item];
-                let result = await shipAsync({
-                  ...this.authDetail(),
-                  ...this.shipmentMapRequest(
-                    {
-                      sender_information,
-                      receipant_information,
-                      parcel_information,
-                    },
-                    "ship",
-                    index + 2,
-                    packageCount,
-                    firstShipment.CompletedShipmentDetail.MasterTrackingId
-                      .TrackingNumber
-                  ),
-                });
-                // console.log(
-                //   util.inspect(result, {
-                //     showHidden: false,
-                //     depth: null,
-                //     colors: true,
-                //   })
-                // );
-                return result;
-              }
-            )
+            shipment.parcel_information.parcel_list.map(async (item, index) => {
+              let {
+                sender_information,
+                receipant_information,
+                parcel_information,
+              } = shipment;
+              shipment.parcel_information.parcel_list = [item];
+              let result = await shipAsync({
+                ...this.authDetail(),
+                ...this.shipmentMapRequest(
+                  {
+                    sender_information,
+                    receipant_information,
+                    parcel_information,
+                  },
+                  "ship",
+                  index + 2,
+                  packageCount,
+                  firstShipment.CompletedShipmentDetail.MasterTrackingId
+                    .TrackingNumber
+                ),
+              });
+              // console.log(
+              //   util.inspect(result, {
+              //     showHidden: false,
+              //     depth: null,
+              //     colors: true,
+              //   })
+              // );
+              return result;
+            })
           );
         }
       } else {

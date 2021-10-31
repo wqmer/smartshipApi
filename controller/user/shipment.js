@@ -22,13 +22,9 @@ const voidShipment = async (req, res) => {
     const myService = new MySerivceClass(result.asset.account_information);
     let void_result = await myService.void(tracking);
     const voidSchema = util.voidRepsonseScheme(result.type);
-    //  to do validate void_result
-    // console.log(void_result.data)
     const errors = voidSchema.validate(void_result.data);
     // console.log(errors);
 
-
-    
     responseClient(
       res,
       errors.length == 0 ? 200 : 401,

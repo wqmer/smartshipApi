@@ -32,13 +32,14 @@ getCarriers = async (req, res) => {
     const query = _.pickBy(
       {
         // "$text":text,
-        user: req.session.user_info.user_object_id,
+        // user: req.session.user_info.user_object_id,
         //   user: req.session.user_info.user_object_id,
         ...filter,
       },
       _.identity
     );
     options.select = "-asset.account_information";
+    options.sort = 'agent type'
     if (req.body.limit == undefined) {
       options.pagination = false;
     }
@@ -66,10 +67,7 @@ getCarriers = async (req, res) => {
     //   }
     // }
     // query["$or"] = [];
-    // query["$or"] = [{ user: req.session.user_info.user_object_id }, {
 
-    // }];
-    console.log(query);
     // console.log(options)
 
     let resultOfF = await Service.find(
@@ -81,14 +79,19 @@ getCarriers = async (req, res) => {
       path: "carrier",
       select: "-asset.account_information",
     });
-    
-    console.log(
-      _.uniqBy(
-        resultOfF.map((e) => e.carrier),
-        "-id"
-      )
-    );
 
+    let ss_carrier = _.uniqBy(
+      resultOfF.map((e) => e.carrier),
+      "-id"
+    ).map((i) => i._id);
+
+    // console.log(ss_carrier);
+
+    query["$or"] = [
+      { user: req.session.user_info.user_object_id },
+      { _id: ss_carrier },
+    ];
+    console.log(query);
     let resultOfU = await Carrier.paginate(query, options);
     // console.log(result)
     responseClient(res, 200, 0, "query data success !", resultOfU);

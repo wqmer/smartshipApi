@@ -82,9 +82,7 @@ var order = new mongoose.Schema(
       billing_amount: Object,
     },
 
-    charge_fee: { type: Number },
-
-    transaction: [{ type: Schema.Types.ObjectId, ref: "Transaction" }],
+    ledger: [{ type: Schema.Types.ObjectId, ref: "Ledger" }],
 
     user: {
       type: Schema.Types.ObjectId,

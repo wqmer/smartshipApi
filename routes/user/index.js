@@ -861,6 +861,9 @@ router.post("/get_service", user.getServices);
 //更新渠道
 router.put("/update_service", user.updateService);
 
+//更新smarthip渠道
+router.put("/enable_service", user.enableService);
+
 //查询tracking
 router.post("/get_tracking", (req, res) => {
   rp(chukoula.fedex_tracking(req.body))
@@ -1217,7 +1220,7 @@ router.post("/create_shipment", async (req, res) => {
 });
 
 //作废运单
-router.post("/void_shipment" , user.voidShipment)
+router.post("/void_shipment", user.voidShipment);
 
 //账簿 筛选，模糊查询，分页
 router.post("/get_ledgers", async (req, res) => {

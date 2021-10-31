@@ -59,7 +59,9 @@ const addService = async (req, res) => {
 const updateService = async (req, res) => {
   const { status, _id } = req.body;
   try {
-    let result = await Service.updateOne(
+    let result;
+
+    result = await Service.updateOne(
       {
         _id,
       },
@@ -74,13 +76,36 @@ const updateService = async (req, res) => {
   }
 };
 
+const enableService = async (req, res) => {
+  const { action, _id } = req.body;
+  try {
+    let switchAction =
+      action == "enable"
+        ? { $push: { activated_group: req.session.user_info.user_object_id } }
+        : { $pull: { activated_group: req.session.user_info.user_object_id } };
+    let result;
+    result = await Service.updateOne(
+      {
+        _id,
+      },
+      { ...switchAction }
+    );
+    result.n == 1
+      ? responseClient(res, 200, 0, "Update service successfully")
+      : responseClient(res, 401, 1, "Fail to update");
+  } catch (error) {
+    responseClient(res);
+    console.log(error);
+  }
+};
+
 const getServices = (req, res) => {
   //返回所有可用渠道
-  let { carrier } = req.body;
+  let { carrier, agent } = req.body;
   Carrier.findOne(
     {
       _id: carrier,
-      user: req.session.user_info.user_object_id,
+      // user: req.session.user_info.user_object_id,
       // status: "activated",
       // $or: [
       //   { auth_group: { $in: req.session.user_info.user_id } },
@@ -93,15 +118,26 @@ const getServices = (req, res) => {
     },
     "-asset"
   )
-    .populate("service")
+    .populate({
+      path: "service",
+      match:
+        agent == "Smartship"
+          ? { auth_group: { $in: req.session.user_info.user_object_id } }
+          : undefined,
+      // match: { auth_group: { $in: req.session.user_info.user_object_id } },
+    })
     .then((result) => {
       // console.log(result);
       responseClient(res, 200, 0, "Get service successfully", result);
     })
-    .catch((error) => responseClient(res));
+    .catch((error) => {
+      console.log(error);
+      responseClient(res);
+    });
 };
 
 module.exports = {
+  enableService,
   addService,
   updateService,
   getServices,

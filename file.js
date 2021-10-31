@@ -1,34 +1,3 @@
-const agentTemplate = require("./config/shppingAgent");
-
-const mongoose = require("mongoose");
-const moment = require("moment");
-var Fakerator = require("fakerator");
-var fakerator = Fakerator();
-var name = fakerator.names.name();
-const Pusher = require("pusher-js");
-const util = require("util");
-require("dotenv").config();
-var parser = require("parse-address");
-const serviceClass = require("./services/shipping_module/carrier");
-var numeral = require("numeral");
-let imgConvert = require("image-convert");
-const { ACCESS_KEY_ID, SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET, testBase64 } =
-  process.env;
-const ImageUpload = require("./services/AWS/imageUpload");
-var Promise = require("bluebird");
-var _ = require("lodash");
-
-// let obj = {
-//   "2nd Day Air": 1,
-// };
-// console.log(obj);
-// let obj = {
-//   accountInfo: {
-//     key: "1",
-//     id: "2",
-//   },
-// };
-
 const request = require("request");
 const requests = require("request-promise");
 const moment = require("moment");
@@ -91,7 +60,7 @@ function setFee() {
 // function golabalConnPromise(global_conn, sql, param) {
 //   // Promise化 链接查询
 //   return new Promise(function (resolve, reject) {
-//     global.conn.query(sql, param, function (err, ret) {
+//     global_conn.query(sql, param, function (err, ret) {
 //       if (err) reject(err);
 //       resolve(ret);
 //     });

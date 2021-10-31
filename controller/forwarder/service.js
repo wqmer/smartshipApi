@@ -170,7 +170,7 @@ const getServicesAuthStatus = async (req, res) => {
       },
       "-asset"
     ).populate({ path: "service", select: "_id mail_class rate " });
-    console.log(result_service);
+    // console.log(result_service);
     if (result_service.service.length == 0) {
       responseClient(res, 404, 1, "No service !");
       return;
@@ -231,7 +231,20 @@ const getServicesAuthStatus = async (req, res) => {
         newItem[e.mail_class]["status"] = item.service.includes(e._id);
         newItem[e.mail_class]["_id"] = e._id;
       });
-      newItem = { ...item.toObject(), ...newItem };
+
+      const toArrayWithKey = (obj, keyAs) =>
+        _.values(
+          _.mapValues(obj, (value, key) => {
+            value[keyAs] = key;
+            return value;
+          })
+        );
+      // console.log();
+      newItem = {
+        ...item.toObject(),
+        services: toArrayWithKey(newItem, "name"),
+      };
+
       delete newItem.service;
       return newItem;
     });
