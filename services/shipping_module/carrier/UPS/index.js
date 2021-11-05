@@ -779,13 +779,13 @@ class UPS extends CarrierClass {
     try {
       // console.log(shipment)
       let request_body = this.shipmentMapRequest(shipment);
-      console.log(
-        util.inspect(request_body, {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect(request_body, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       const response = await axios({
         method: "post",
         url: this.apiEndPoint + url,

@@ -18,6 +18,7 @@ var carrier = new mongoose.Schema(
     agent: { type: String, default: "default" },
     forwarder: { type: Schema.Types.ObjectId, ref: "Forwarder" },
     auth_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    activated_group: [{ type: Schema.Types.ObjectId, ref: "User" }],
     user: { type: Schema.Types.ObjectId, ref: "User" },
     status: { type: String, default: "unactivated" },
     description: { type: String, default: "无描述" },

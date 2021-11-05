@@ -11,7 +11,7 @@ const _ = require("lodash");
 const config = require("../../config/dev");
 const { responseClient, md5, MD5_SUFFIX } = require("../util");
 
-getCarriers = async (req, res) => {
+const getCarriers = async (req, res) => {
   let {
     // text,
     page,
@@ -39,7 +39,7 @@ getCarriers = async (req, res) => {
       _.identity
     );
     options.select = "-asset.account_information";
-    options.sort = 'agent type'
+    options.sort = "agent type";
     if (req.body.limit == undefined) {
       options.pagination = false;
     }
@@ -69,27 +69,28 @@ getCarriers = async (req, res) => {
     // query["$or"] = [];
 
     // console.log(options)
-
+// 找到 授权使用的的service ，拿出对应的carrier
     let resultOfF = await Service.find(
       {
         auth_group: { $in: req.session.user_info.user_object_id },
+        status: "activated" 
       },
       "-ship_parameters -rate -auth_group -activated_group -status -_id -mail_class -description -forwarder"
     ).populate({
       path: "carrier",
       select: "-asset.account_information",
     });
-
+    // console.log(resultOfF);
     let ss_carrier = _.uniqBy(
-      resultOfF.map((e) => e.carrier),
-      "-id"
-    ).map((i) => i._id);
+      resultOfF.map((e) => e.carrier._id),
+      "_id"
+    );
 
-    // console.log(ss_carrier);
+    console.log(ss_carrier);
 
     query["$or"] = [
       { user: req.session.user_info.user_object_id },
-      { _id: ss_carrier },
+      { _id: ss_carrier, status: "activated" },
     ];
     console.log(query);
     let resultOfU = await Carrier.paginate(query, options);
@@ -101,7 +102,7 @@ getCarriers = async (req, res) => {
   }
 };
 
-getCarrier = async (req, res) => {
+const getCarrier = async (req, res) => {
   let { _id } = req.body;
 
   try {
@@ -122,7 +123,7 @@ getCarrier = async (req, res) => {
   }
 };
 
-addCarrier = async (req, res) => {
+const addCarrier = async (req, res) => {
   let { type, asset } = req.body;
   try {
     let carrier = new Carrier({
@@ -145,7 +146,7 @@ addCarrier = async (req, res) => {
   }
 };
 
-updateCarrier = async (req, res) => {
+const updateCarrier = async (req, res) => {
   let { _id, asset, status } = req.body;
 
   // let options = _.pickBy(
@@ -180,7 +181,7 @@ updateCarrier = async (req, res) => {
   }
 };
 
-deleteCarrier = async (req, res) => {
+const deleteCarrier = async (req, res) => {
   let { _id } = req.body;
 
   try {
@@ -201,10 +202,44 @@ deleteCarrier = async (req, res) => {
   }
 };
 
+const enableCarrier = async (req, res) => {
+  let { _id, status, agent } = req.body;
+  try {
+    let result;
+    if (agent == "Smartship") {
+      result = await Carrier.updateOne(
+        {
+          _id,
+        },
+        status == "activated"
+          ? { $push: { activated_group: req.session.user_info.user_object_id } }
+          : { $pull: { activated_group: req.session.user_info.user_object_id } }
+      );
+    } else {
+      result = await Carrier.updateOne(
+        {
+          _id,
+          user: req.session.user_info.user_object_id,
+        },
+        { status }
+      );
+    }
+
+    // console.log(result)
+    result.n == 1
+      ? responseClient(res, 200, 0, "Update carrier account successfully")
+      : responseClient(res, 404, 1, "No carrier account found");
+  } catch (error) {
+    responseClient(res);
+    console.log(error);
+  }
+};
+
 module.exports = {
   getCarriers,
   getCarrier,
   addCarrier,
   updateCarrier,
   deleteCarrier,
+  enableCarrier,
 };

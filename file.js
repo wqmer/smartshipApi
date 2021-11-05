@@ -67,24 +67,37 @@ function setFee() {
 //   });
 // }
 
-// async function updateHistoryBalanceByKim() {
-//   var sql = "SELECT id FROM `saas_user` where yue<>0 and lastkhyetime<?";
-//   var param = [moment().format("YYYY-MM-DD")];
-//   try {
-//          //查询
-//     let result = await golabalConnPromise(global.conn, sql, param);
-//          //提取查询结果里的 id
-//     let uids = result.map(function (e) {
-//       return e.id;
-//     });
-//          //用查询结果执行操作，这里需要用到Promise all ，因为 虽然数组里的任务并发执行，但是需要等待每个任务完成才算最终完成
-//     await Promise.all(
-//       uids.map(async function (uid) {
-//         await request_balance_kim(uid);
-//       })
-//     );
-//   } catch (error) { console.log(error)}
-// }
+async function updateHistoryBalanceByKim() {
+  var sql = "SELECT id FROM `saas_user` where yue<>0 and lastkhyetime<?";
+  var param = [moment().format("YYYY-MM-DD")];
+  try {
+    //查询
+    let result = await golabalConnPromise(global.conn, sql, param);
+    //提取查询结果里的 id
+    let uids = result.map(function (e) {
+      return e.id;
+    });
+    //用查询结果执行操作，这里需要用到Promise all ，因为 虽然数组里的任务并发执行，但是需要等待每个任务完成才算最终完成
+    // await Promise.all(
+    //   uids.map(async function (uid) {
+    //     await request_balance_kim(uid);
+    //   })
+    // );
+
+    //轮次执行
+    // uids.forEach(function (uid) {
+    //     await request_balance_kim(uid);
+    // });
+  
+    for (const uid of uids) {
+      await request_balance_kim(uid);
+    }
+     
+
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 // async function request_balance_kim(uid) {
 //   try {

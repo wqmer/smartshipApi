@@ -129,7 +129,7 @@ const addCarrier = async (req, res) => {
           carrier: resultOfCarrier._id,
           ship_parameters: util.serviceMapShipPara(type, item.mail_class),
           ...item,
-          type: item.type,
+          type,
           forwarder: req.session.forwarder_info.forwarder_object_id,
         };
       });

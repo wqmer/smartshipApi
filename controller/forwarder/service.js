@@ -250,7 +250,6 @@ const getServicesAuthStatus = async (req, res) => {
     });
 
     // console.log(reuslt);
-
     // console.log(result_users);
     responseClient(res, 200, 0, "query data success !", {
       ...result_users,
