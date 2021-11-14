@@ -5,6 +5,9 @@
   "scripts": {
     "start": "node index.js "
   },
+  "engines": {
+    "node": ">=10 <11"
+  },
   "dependencies": {
     "@easypost/api": "^3.7.3",
     "aws-sdk": "^2.761.0",
