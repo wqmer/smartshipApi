@@ -11,7 +11,15 @@ const date = new Date();
 const delay = require("delay");
 
 class FEDEX extends CarrierClass {
-  constructor(account, apiEndPoint, discount, carrier, mailClass, asset = {}) {
+  constructor(
+    account,
+    apiEndPoint,
+    discount,
+    carrier,
+    mailClass,
+    asset = {},
+    agent = "default"
+  ) {
     super();
     this.account = account;
     this.apiEndPoint = apiEndPoint;
@@ -19,6 +27,7 @@ class FEDEX extends CarrierClass {
     this.carrier = carrier;
     this.mailClass = mailClass;
     this.asset = asset;
+    this.agent = agent;
   }
 
   getSurChargeName = () => {};
@@ -95,6 +104,7 @@ class FEDEX extends CarrierClass {
     unit_weight_accepted = "lb",
     multiFlag = false
   ) {
+    console.log(new Date(date.getTime()).toISOString());
     let convert_value_weight = this.getConvertFactor(
       shipment.parcel_information.unit_weight,
       unit_weight_accepted
@@ -367,7 +377,7 @@ class FEDEX extends CarrierClass {
           request_id: undefined,
           package_key: undefined,
           order_id: undefined,
-          agent: "FEDEX",
+          agent: this.agent,
           carrier: this.carrier,
           mail_class: this.mailClass,
           asset: {
@@ -389,7 +399,7 @@ class FEDEX extends CarrierClass {
           request_id: undefined,
           package_key: undefined,
           order_id: undefined,
-          agent: "FEDEX",
+          agent: this.agent,
           carrier: this.carrier,
           mail_class: this.mailClass,
           asset: {
@@ -700,7 +710,7 @@ class FEDEX extends CarrierClass {
             status: 200,
             data: {
               _id: this.asset._id, // service id
-              agent: "FEDEX",
+              agent: this.agent,
               carrier: this.carrier,
               mail_class: this.mailClass,
               description: this.asset.description,
@@ -736,7 +746,7 @@ class FEDEX extends CarrierClass {
                 description: this.asset.description,
                 name: this.asset.name,
               },
-              agent: "FEDEX",
+              agent: this.agent,
               carrier: this.carrier,
               mail_class: this.mailClass,
               // asset is the data form server-side
@@ -758,7 +768,7 @@ class FEDEX extends CarrierClass {
             request_id: undefined,
             package_key: undefined,
             order_id: undefined,
-            agent: "FEDEX",
+            agent: this.agent,
             carrier: this.carrier,
             mail_class: this.mailClass,
             asset: {

@@ -9,9 +9,16 @@ const util = require("util");
 const { timeStamp } = require("console");
 const { UpsCIEEndpoint } = process.env;
 
-
 class UPS extends CarrierClass {
-  constructor(account, apiEndPoint, discount, carrier, mailClass, asset = {}) {
+  constructor(
+    account,
+    apiEndPoint,
+    discount,
+    carrier,
+    mailClass,
+    asset = {},
+    agent = "default"
+  ) {
     super();
     this.account = account;
     this.apiEndPoint = apiEndPoint;
@@ -19,6 +26,7 @@ class UPS extends CarrierClass {
     this.carrier = carrier;
     this.mailClass = mailClass;
     this.asset = asset;
+    this.agent = agent;
   }
 
   authHeaderCIE = () => {
@@ -441,7 +449,7 @@ class UPS extends CarrierClass {
           package_key: JSON.parse(item.config.data).package_key,
           order_id: undefined,
           _id: this.asset._id,
-          agent: "UPS",
+          agent: this.agent,
           carrier: this.carrier,
           mail_class: this.mailClass,
           asset: {
@@ -619,7 +627,7 @@ class UPS extends CarrierClass {
             status: item.status,
             data: {
               _id: this.asset._id, // service id
-              agent: "UPS",
+              agent: this.agent,
               carrier: this.carrier,
               mail_class: this.mailClass,
               description: this.asset.description,
@@ -660,7 +668,7 @@ class UPS extends CarrierClass {
                 description: this.asset.description,
                 name: this.asset.name,
               },
-              agent: "UPS",
+              agent: this.agent,
               carrier: this.carrier,
               mail_class: this.mailClass,
               // asset is the data form server-side
@@ -828,7 +836,6 @@ class UPS extends CarrierClass {
 
   async void(tracking, url = "/Void") {
     try {
-  
       let requst_body = {
         VoidShipmentRequest: {
           Request: {
@@ -852,7 +859,7 @@ class UPS extends CarrierClass {
         data: JSON.stringify({ ...this.authHeaderCIE(), ...requst_body }),
       });
       // console.log(response)
-      
+
       return this.handleCIEResponse(response);
     } catch (error) {
       // console.log(error);

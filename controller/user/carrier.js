@@ -7,6 +7,9 @@ const Order = require("../../mongoDB/model/Order");
 const Carrier = require("../../mongoDB/model/Carrier");
 const shortid = require("shortid");
 const moment = require("moment");
+
+const mongoose = require("mongoose");
+const util = require("../util");
 const _ = require("lodash");
 const config = require("../../config/dev");
 const { responseClient, md5, MD5_SUFFIX } = require("../util");
@@ -69,11 +72,11 @@ const getCarriers = async (req, res) => {
     // query["$or"] = [];
 
     // console.log(options)
-// 找到 授权使用的的service ，拿出对应的carrier
+    // 找到 授权使用的的service ，拿出对应的carrier
     let resultOfF = await Service.find(
       {
         auth_group: { $in: req.session.user_info.user_object_id },
-        status: "activated" 
+        status: "activated",
       },
       "-ship_parameters -rate -auth_group -activated_group -status -_id -mail_class -description -forwarder"
     ).populate({
@@ -126,21 +129,56 @@ const getCarrier = async (req, res) => {
 const addCarrier = async (req, res) => {
   let { type, asset } = req.body;
   try {
-    let carrier = new Carrier({
-      type,
-      asset: {
-        ...asset,
-        nick_name: asset.nick_name || type,
-        code: type + "@" + shortid.generate(),
-        logo_url: config.LOGO[type],
-        request_url: config.URL[type],
-      },
-      user: req.session.user_info.user_object_id,
-    });
-    let result = await carrier.save();
-    // console.log(result)
-    responseClient(res, 200, 0, "Add carrier account successfully", result);
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const opts = { session, new: true };
+      let carrier = new Carrier({
+        type,
+        asset: {
+          ...asset,
+          nick_name: asset.nick_name || type,
+          code: type + "@" + shortid.generate(),
+          logo_url: config.LOGO[type],
+          request_url: config.URL[type],
+        },
+        user: req.session.user_info.user_object_id,
+      });
+      let resultOfCarrier = await carrier.save(opts);
+      let newServices = util.serviceList(type).map((item) => {
+        return {
+          carrier: resultOfCarrier._id,
+          ship_parameters: util.serviceMapShipPara(type, item.mail_class),
+          ...item,
+          type,
+          user: req.session.user_info.user_object_id,
+        };
+      });
+
+      let resultOfServices = await Service.insertMany(newServices, opts);
+      // console.log(resultOfServices);
+      let result_update = await Carrier.updateMany(
+        { _id: resultOfCarrier._id },
+        { service: resultOfServices.map((item) => item._id) },
+        opts
+      );
+      //结束事务;
+      if (result_update.n === 1) {
+        await session.commitTransaction();
+        session.endSession();
+        responseClient(res, 200, 0, "Add carrier account successfully");
+      } else {
+        throw new Error("Failed to add!");
+      }
+    } catch (error) {
+      console.log(error)
+      await session.abortTransaction();
+      session.endSession();
+      responseClient(res, 400, 1, "Failed to add");
+    }
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     responseClient(res);
     console.log(error);
   }

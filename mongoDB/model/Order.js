@@ -21,7 +21,9 @@ var order = new mongoose.Schema(
     type: { type: String, default: "Domestic_ship" },
     status: { type: String, default: "draft" },
     server_status: { type: String, default: "default" },
+
     service: {
+      _id: { type: Schema.Types.ObjectId, ref: "Service" },
       carrier: { type: Schema.Types.ObjectId, ref: "Carrier" },
       carrier_type: String,
       mail_class: String,
