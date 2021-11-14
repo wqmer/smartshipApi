@@ -42,6 +42,7 @@ function exute(collection, worker) {
                 cluster.workers[id].disconnect();
               }
             });
+            console.log(result);
             reslove(result);
           }
         });

@@ -772,7 +772,14 @@ class UPS extends CarrierClass {
         "ship",
         requestType
       );
-      // console.log(ResponseWithoutHeader)
+      console.log(
+        util.inspect(ResponseWithoutHeader, {
+          showHidden: false,
+          depth: null,
+          colors: true,
+        })
+      );
+
       return ResponseWithoutHeader;
     } catch (error) {
       //   console.log(error);

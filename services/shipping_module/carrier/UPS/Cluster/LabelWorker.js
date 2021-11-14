@@ -24,7 +24,7 @@ process.on("message", async function (msg) {
     },
   };
 
-  console.log(result)
+  // console.log(result)
 
   // console.log(
   //   `[worker ${cluster.worker.id}] work finish work and using ${
