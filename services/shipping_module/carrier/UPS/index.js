@@ -200,7 +200,7 @@ class UPS extends CarrierClass {
     unit_weight_accepted = "lb",
     type = "rate"
   ) {
-    // console.log(shipment);
+    console.log(shipment);
     try {
       let convert_value_weight = this.getConvertFactor(
         shipment.parcel_information.unit_weight,
@@ -383,7 +383,7 @@ class UPS extends CarrierClass {
           },
           ShipTo: {
             Name: receipant_name,
-            CompanyDisplayableName: receipant_company,
+            AttentionName: receipant_company,
             Address: {
               //   ResidentialAddressIndicator: "",
               ...isRes,
