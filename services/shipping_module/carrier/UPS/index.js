@@ -383,7 +383,7 @@ class UPS extends CarrierClass {
           },
           ShipTo: {
             Name: receipant_name,
-            // CompanyDisplayableName : 'test company',
+            CompanyDisplayableName: receipant_company,
             Address: {
               //   ResidentialAddressIndicator: "",
               ...isRes,
