@@ -182,6 +182,15 @@ router.use((req, res, next) => {
       );
 });
 
+//获取交易记录
+router.post("/get_ledgers", forwarder.getLedgers);
+
+//获取单条交易记录详情
+router.post("/get_ledger", forwarder.getLedger);
+
+//添加一条交易记录
+router.post("/add_ledger", forwarder.addLedger);
+
 //获取所有carrier账号
 router.post("/get_carriers", forwarder.getCarriers);
 
@@ -214,9 +223,6 @@ router.post("/get_serivce_auth_status", forwarder.getServicesAuthStatus);
 
 //更新一个客户的服务状态
 router.put("/update_service_auth_status", forwarder.updateUserService);
-
-
-
 
 //为一个服务添加报价
 router.post("/add_rate", async (req, res) => {});
