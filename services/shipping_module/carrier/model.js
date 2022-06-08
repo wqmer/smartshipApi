@@ -6,7 +6,7 @@ class CarrierClass {
     this.dicount = dicount;
   }
 
-getConvertFactor = (CURRENT_UNIT, TARGET_UNIT) => {
+  getConvertFactor = (CURRENT_UNIT = "cm", TARGET_UNIT = "in") => {
     let factor;
     switch (true) {
       case CURRENT_UNIT == "cm" && TARGET_UNIT == "in":
@@ -33,8 +33,15 @@ getConvertFactor = (CURRENT_UNIT, TARGET_UNIT) => {
       case CURRENT_UNIT == "lb" && TARGET_UNIT == "kg":
         factor = 0.45359;
         break;
+
       case CURRENT_UNIT == "kg" && TARGET_UNIT == "lb":
         factor = 2.205;
+        break;
+      case CURRENT_UNIT == "lb" && TARGET_UNIT == "lb":
+        factor = 1;
+        break;
+      case CURRENT_UNIT == "in" && TARGET_UNIT == "in":
+        factor = 1;
         break;
       default:
         factor = 1;
@@ -42,13 +49,14 @@ getConvertFactor = (CURRENT_UNIT, TARGET_UNIT) => {
     return factor;
   };
 
-// 拿去label 返回的base64数组，转换成图片 上传到 aws S3 
-  ImageProcessAndUpload = (Payload, Imagetype , isRotate , isConvert , isclusterMode) => {
-
-
-
-
-  }
+  // 拿去label 返回的base64数组，转换成图片 上传到 aws S3
+  ImageProcessAndUpload = (
+    Payload,
+    Imagetype,
+    isRotate,
+    isConvert,
+    isclusterMode
+  ) => {};
   // rate = () => {
   //     console.log("this is rate function")
   // }

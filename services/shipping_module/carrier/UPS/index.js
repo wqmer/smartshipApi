@@ -122,6 +122,30 @@ class UPS extends CarrierClass {
     // The following Services are not available to return shipment: 13, 59, 82, 83, 84, 85, 86
   };
 
+  getPakcageType = (type) => {
+    let code;
+    switch (type) {
+      case "YOUR_PACKAGING":
+        code = "02";
+        break;
+      case "UPS_LETTER":
+        code = "01";
+        break;
+      case "UPS_TUBE":
+        code = "03";
+        break;
+      case "UPS_PAK":
+        code = "04";
+        break;
+      default:
+        code = "02";
+    }
+    return code;
+
+    // The code for the UPS packaging type associated with the package.
+    // Valid values: 00 = UNKNOWN 01 = UPS Letter 02 = Package 03 = Tube 04 = Pak 21 = Express Box 24 = 25KG Box 25 = 10KG Box 30 = Pallet 2a = Small Express Box 2b = Medium Express Box 2c = Large Express Box. For FRS rating requests the only valid value is customer supplied packaging “02”.
+  };
+
   calFreightClass = (weight, height, width, length) => {
     try {
       let result = parseFloat(
@@ -200,7 +224,7 @@ class UPS extends CarrierClass {
     unit_weight_accepted = "lb",
     type = "rate"
   ) {
-    console.log(shipment);
+    // console.log(shipment);
     try {
       let convert_value_weight = this.getConvertFactor(
         shipment.parcel_information.unit_weight,
@@ -259,13 +283,17 @@ class UPS extends CarrierClass {
             },
             //FOR RATE
             PackagingType: {
-              Code: "02",
-              Description: "Package",
+              // Code: "02",
+              Code: this.getPakcageType(
+                shipment.parcel_information.parcel_list[0].pack_info.pack_type
+              ),
             },
             //FOR SHIP
             Packaging: {
-              Code: "02",
-              Description: "Package",
+              // Code: "02",
+              Code: this.getPakcageType(
+                shipment.parcel_information.parcel_list[0].pack_info.pack_type
+              ),
             },
 
             ReferenceNumber: [refernece1, refernece2],
@@ -278,15 +306,20 @@ class UPS extends CarrierClass {
                     },
                   }
                 : undefined,
-
-            Dimensions: {
-              UnitOfMeasurement: {
-                Code: "IN",
-              },
-              Length: length,
-              Width: width,
-              Height: height,
-            },
+            // letter 没有dim
+            Dimensions:
+              this.getPakcageType(
+                shipment.parcel_information.parcel_list[0].pack_info.pack_type
+              ) == "01"
+                ? undefined
+                : {
+                    UnitOfMeasurement: {
+                      Code: "IN",
+                    },
+                    Length: length,
+                    Width: width,
+                    Height: height,
+                  },
             PackageWeight: {
               UnitOfMeasurement: {
                 Code: "LBS",
@@ -517,10 +550,15 @@ class UPS extends CarrierClass {
               : priceObject.ShipmentCharges.TotalCharges.MonetaryValue;
 
           // total_charge = Negotiated_Charges ? Negotiated_Charges : total_charge;
-
-          let SurchargeTotal = Array.isArray(priceObject.ItemizedCharges)
-            ? priceObject.ItemizedCharges
-            : [priceObject.ItemizedCharges];
+          let SurchargeTotal =
+            type == "rate"
+              ? priceObject.ItemizedCharges
+              : priceObject.ShipmentCharges.ItemizedCharges;
+          SurchargeTotal = Array.isArray(priceObject.ItemizedCharges)
+            ? SurchargeTotal
+            : [SurchargeTotal];
+          SurchargeTotal =
+            SurchargeTotal[0] == null ? undefined : SurchargeTotal;
 
           let billingWeight = priceObject.BillingWeight.Weight;
 
@@ -634,6 +672,7 @@ class UPS extends CarrierClass {
               unit_weight: "lb", // api get in future --》 ship_parameters
               //   length_unit: "inch",
               weight: billingWeight,
+              billing_weight: billingWeight,
               price: {
                 total: total_charge,
                 NegotiateTotal: Negotiated_Charges,

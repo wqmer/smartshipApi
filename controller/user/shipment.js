@@ -16,6 +16,8 @@ const ServiceClass = require("../../services/shipping_module/carrier");
 const CarrierClass = require("../../services/shipping_module/carrier/model.js");
 const User = require("../../mongoDB/model/User");
 const Ledger = require("../../mongoDB/model/Ledger");
+const utilO = require("util");
+
 // const {
 //   mapRequestToModel,
 //   responseClient,
@@ -235,11 +237,39 @@ const createShipment = async (req, res) => {
     service_information,
     billing_information,
   } = req.body;
-  // console.log(req.body)
-  let shipment = req.body;
+  const SHIPMENT = JSON.parse(JSON.stringify(req.body)); //DEEP COPY
+  const shipment = req.body;
+
+  // console.log(
+  //   utilO.inspect(shipment, {
+  //     showHidden: false,
+  //     depth: null,
+  //     colors: true,
+  //   })
+  // );
+
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
+    const UNIT_WEIGHT = SHIPMENT.parcel_information.unit_weight;
+    const UNIT_LENGTH = SHIPMENT.parcel_information.unit_length;
+    const PARCEL_LIST = SHIPMENT.parcel_information.parcel_list;
+    const WEIGHT_TOTAL = parseFloat(
+      parseFloat(
+        PARCEL_LIST.map((item) => parseFloat(item.pack_info.weight)).reduce(
+          (a, c) => a + c
+        ) * util.getConvertFactor(UNIT_WEIGHT, "lb")
+      ).toFixed(2)
+    );
+
+    // console.log(
+    //   utilO.inspect(input_parcel_list, {
+    //     showHidden: false,
+    //     depth: null,
+    //     colors: true,
+    //   })
+    // );
+
     const opts = { session, new: true };
     //-------检查客户账户状态----------------------------------------------
     //检查余额，小于0 返回res ，如果有预估价格，需要比对
@@ -359,7 +389,7 @@ const createShipment = async (req, res) => {
       shipment,
       service_information.service_content[0].RateType
     );
-
+    //for IB
     const handleMultiResult = async (result) => {
       // console.log(result)
       let zone = result[0].data ? result[0].data.zone : undefined;
@@ -376,6 +406,7 @@ const createShipment = async (req, res) => {
         return {
           label: item.data.label_image,
           weight: item.data.weight,
+
           tracking_numbers: item.data.tracking_numbers,
           postage: {
             billing_amount: item.data.price,
@@ -445,6 +476,7 @@ const createShipment = async (req, res) => {
       let obj = {
         status,
         weight,
+        billing_weight,
         zone,
         total_fee,
         fail_order,
@@ -457,9 +489,17 @@ const createShipment = async (req, res) => {
 
       return obj;
     };
-
+    //for UPS FedeEx
     const handleSingleResult = async (result) => {
-      let total_fee, weight, zone, parcelList;
+      let total_fee,
+        weight,
+        billing_weight,
+        zone,
+        parcelList,
+        surchargeTotal,
+        factor_unit_legnth,
+        factor_unit_weight,
+        total_fee_original;
       let order_status, status, response_status, response_message;
       if (result.status != 200 && result.status != 201) {
         order_status = "fail";
@@ -468,12 +508,54 @@ const createShipment = async (req, res) => {
         response_message = "订单失败," + "第三方服务报错： " + result.message;
       } else {
         // ups data return
+        surchargeTotal = result.data.price.SurchargeTotal;
         total_fee = result.data.price.NegotiateTotal
           ? result.data.price.NegotiateTotal
           : result.data.price.total;
-        weight = result.data.weight;
+        total_fee_original = result.data.price.total;
+        weight = WEIGHT_TOTAL;
+        billing_weight = parseFloat(result.data.weight);
         zone = result.data.zone;
-        parcelList = result.data.parcel_list;
+        // factor_unit_legnth = util.getConvertFactor()
+        // factor_unit_weight = util.getConvertFactor()
+        parcelList = result.data.parcel_list.map((e, index) => {
+          e.weight = parseFloat(
+            parseFloat(
+              PARCEL_LIST[index].pack_info.weight *
+                util.getConvertFactor(UNIT_WEIGHT, "lb")
+            ).toFixed(2)
+          );
+          e.length = parseFloat(
+            parseFloat(
+              PARCEL_LIST[index].pack_info.length *
+                util.getConvertFactor(UNIT_LENGTH, "in")
+            ).toFixed(2)
+          );
+          e.height = parseFloat(
+            parseFloat(
+              PARCEL_LIST[index].pack_info.height *
+                util.getConvertFactor(UNIT_LENGTH, "in")
+            ).toFixed(2)
+          );
+          e.width = parseFloat(
+            parseFloat(
+              PARCEL_LIST[index].pack_info.width *
+                util.getConvertFactor(UNIT_LENGTH, "in")
+            ).toFixed(2)
+          );
+          e.pack_type = PARCEL_LIST[index].pack_info.pack_type;
+          e.reference_1 = PARCEL_LIST[index].pack_info.reference_1;
+          e.reference_2 = PARCEL_LIST[index].pack_info.reference_2;
+          return e;
+        });
+        // parcelList = input_parcel_list.map((e, index) => {
+        //   e.weight = input_parcel_list[index].pack_info.weight;
+        //   e.length = input_parcel_list[index].pack_info.length;
+        //   e.height = input_parcel_list[index].pack_info.height;
+        //   e.width = input_parcel_list[index].pack_info.width;
+        //   return e;
+        // });
+
         const new_balance = parseFloat(balance - total_fee).toFixed(2);
         let newLedgerRecord = new Ledger({
           type: "label",
@@ -497,16 +579,19 @@ const createShipment = async (req, res) => {
 
       let obj = {
         total_fee,
+        surchargeTotal,
+        total_fee_original,
         weight,
+        billing_weight,
         zone,
         parcelList,
         order_status,
         status,
         response_status,
         response_message,
+
         // fail_order: result.status == 200 || result.status == 201 ? [] : ["x"],
       };
-
       return obj;
     };
 
@@ -526,7 +611,10 @@ const createShipment = async (req, res) => {
 
     let {
       total_fee,
+      surchargeTotal,
+      total_fee_original,
       weight,
+      billing_weight,
       zone,
       parcelList,
       order_status,
@@ -540,12 +628,16 @@ const createShipment = async (req, res) => {
     //包裹信息
     let parcel_information = {
       weight,
+      billing_weight,
       parcelList,
     };
     //邮费信息
     let postage = {
       billing_amount: {
         total: total_fee,
+        //UPS
+        original_charge: total_fee_original,
+        total_surcharge: surchargeTotal,
       },
       zone,
     };

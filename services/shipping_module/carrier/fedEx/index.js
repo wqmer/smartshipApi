@@ -57,6 +57,35 @@ class FEDEX extends CarrierClass {
   //       : rateInfo.RatedPackages;
   // };
 
+  getPakcageType = (type) => {
+    let code;
+    switch (type) {
+      case "YOUR_PACKAGING":
+        code = "YOUR_PACKAGING";
+        break;
+      case "FEDEX_PAK":
+        code = "FEDEX_PAK";
+        break;
+      case "FEDEX_ENVELOPE":
+        code = "FEDEX_ENVELOPE";
+        break;
+      default:
+        code = "YOUR_PACKAGING";
+    }
+    return code;
+
+    // PackagingType: "YOUR_PACKAGING",
+    // PackagingType: "FEDEX_PAK",
+    // FEDEX_EXTRA_LARGE_BOX
+    // FEDEX_SMALL_BOX
+    // FEDEX_MEDIUM_BOX
+    // FEDEX_LARGE_BOX
+    // FEDEX_EXTRA_LARGE_BOX
+    // FEDEX_PAK
+    // FEDEX_TUBE
+    // FEDEX_ENVELOPE
+  };
+
   getServiceCode = () => {
     let code;
     switch (this.mailClass.toLowerCase()) {
@@ -178,11 +207,11 @@ class FEDEX extends CarrierClass {
           },
           CustomerReferences: {
             CustomerReferenceType: "P_O_NUMBER",
-            Value: item.reference_1,
+            Value: item.reference_1, //订单号
           },
           CustomerReferences: {
             CustomerReferenceType: "CUSTOMER_REFERENCE",
-            Value: item.pack_info.reference_2,
+            Value: item.refernece2, //sku
           },
 
           CustomerReferences,
@@ -281,19 +310,24 @@ class FEDEX extends CarrierClass {
       // VariableOptions: ["FEDEX_ONE_RATE"],
       RequestedShipment: {
         ShipTimestamp: new Date(date.getTime()).toISOString(),
-
         DropoffType: "REGULAR_PICKUP",
-
         ServiceType: this.getServiceCode(),
-
-        PackagingType: "YOUR_PACKAGING",
-
+        PackagingType: this.getPakcageType(
+          shipment.parcel_information.parcel_list[0].pack_info.pack_type
+        ),
+        // PackagingType: "YOUR_PACKAGING",
         // PackagingType: "FEDEX_PAK",
+        // FEDEX_EXTRA_LARGE_BOX
+        // FEDEX_SMALL_BOX
+        // FEDEX_MEDIUM_BOX
+        // FEDEX_LARGE_BOX
+        // FEDEX_EXTRA_LARGE_BOX
+        // FEDEX_PAK
+        // FEDEX_TUBE
+        // FEDEX_ENVELOPE
 
         TotalWeight,
-
         PreferredCurrency: "USD",
-
         Shipper: {
           Contact: {
             PersonName: sender_name,
@@ -688,12 +722,18 @@ class FEDEX extends CarrierClass {
                           : e.CompletedShipmentDetail.CompletedPackageDetails[0]
                               .PackageRating.PackageRateDetails[0].BillingWeight
                               .Value,
+                      billing_weight:
+                        requestType == "oneRate"
+                          ? undefined
+                          : e.CompletedShipmentDetail.CompletedPackageDetails[0]
+                              .PackageRating.PackageRateDetails[0].BillingWeight
+                              .Value,
                       postage: {
                         billing_amount: {
                           baseCharges:
                             e.CompletedShipmentDetail.CompletedPackageDetails[0]
-                              .PackageRating.PackageRateDetails[0]
-                              .NetFedExCharge.Amount,
+                              .PackageRating.PackageRateDetails[0].NetFreight
+                              .Amount,
                           surCharges:
                             e.CompletedShipmentDetail.CompletedPackageDetails[0]
                               .PackageRating.PackageRateDetails[0].Surcharges,
@@ -812,23 +852,22 @@ class FEDEX extends CarrierClass {
       //     }
       //   )
       // );
-
       let shipAsync = util.promisify(client.processShipment);
-
       let firstShipment = await shipAsync({
         ...this.authDetail(),
         ...this.shipmentMapRequest(shipment, "ship"),
       });
 
-      console.log(
-        util.inspect([firstShipment], {
-          showHidden: false,
-          depth: null,
-          colors: true,
-        })
-      );
+      // console.log(
+      //   util.inspect([firstShipment], {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
       // return [firstShipment];
       let response = [];
+      //if package length = 1, return
       if (shipment.parcel_information.parcel_list.length == 1) {
         response = [firstShipment];
         // return response
@@ -849,7 +888,10 @@ class FEDEX extends CarrierClass {
       //     colors: true,
       //   })
       // );
-      shipment.parcel_information.parcel_list.shift();
+
+      let first_pack = shipment.parcel_information.parcel_list.shift();
+
+      // console.log(first_pack);
 
       if (
         firstShipment.HighestSeverity != "ERROR" &&
@@ -933,9 +975,19 @@ class FEDEX extends CarrierClass {
       //     colors: true,
       //   })
       // );
-      (await response).unshift(firstShipment);
 
+      (await response).unshift(firstShipment);
+      // console.log('package amount is ' + packageCount)
+
+      // console.log("package list is " + shipment.parcel_information.parcel_list);
       // return response;
+      // console.log(
+      //   util.inspect(shipment.parcel_information.parcel_list, {
+      //     showHidden: false,
+      //     depth: null,
+      //     colors: true,
+      //   })
+      // );
 
       let Response = await this.handleResonse(response, "ship", requestType);
 
@@ -1243,17 +1295,11 @@ class FEDEX extends CarrierClass {
   //   }
   // }
 
-  // void = () => {
+  void = () => {};
 
-  // }
+  track = () => {};
 
-  // track = () => {
-
-  // }
-
-  // verify = () => {
-
-  // }
+  verify = () => {};
 }
 
 module.exports = { FEDEX };

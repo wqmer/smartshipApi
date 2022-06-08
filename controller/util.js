@@ -32,6 +32,7 @@ module.exports = {
     let model = {
       sender: {
         Company: sender_information.sender_company,
+        nick_name: sender_information.nickname,
         sender_name: sender_information.sender_name,
         add1: sender_information.sender_add1,
         add2: sender_information.sender_add2,
@@ -43,7 +44,8 @@ module.exports = {
       },
       recipient: {
         Company: receipant_information.receipant_company,
-        sender_name: receipant_information.receipant_name,
+        nick_name: receipant_information.nickname,
+        recipient_name: receipant_information.receipant_name,
         add1: receipant_information.receipant_add1,
         add2: receipant_information.receipant_add2,
         state: receipant_information.receipant_state,
@@ -51,6 +53,7 @@ module.exports = {
         zipcode: receipant_information.receipant_zip_code,
         country: receipant_information.receipant_country,
         phone_number: receipant_information.receipant_phone_number,
+        is_res: receipant_information.receipant_is_residential,
       },
       parcel: parcel_information,
     };
@@ -165,6 +168,49 @@ module.exports = {
     }
 
     return list;
+  },
+
+  getConvertFactor: function (CURRENT_UNIT = "in", TARGET_UNIT = "in") {
+    let factor;
+    switch (true) {
+      case CURRENT_UNIT == "cm" && TARGET_UNIT == "in":
+        factor = 0.3937;
+        break;
+      case CURRENT_UNIT == "in" && TARGET_UNIT == "cm":
+        factor = 2.54;
+        break;
+
+      case CURRENT_UNIT == "oz" && TARGET_UNIT == "lb":
+        factor = 0.0625;
+        break;
+      case CURRENT_UNIT == "lb" && TARGET_UNIT == "oz":
+        factor = 16;
+        break;
+
+      case CURRENT_UNIT == "oz" && TARGET_UNIT == "kg":
+        factor = 0.02834;
+        break;
+      case CURRENT_UNIT == "kg" && TARGET_UNIT == "oz":
+        factor = 35.274;
+        break;
+
+      case CURRENT_UNIT == "lb" && TARGET_UNIT == "kg":
+        factor = 0.45359;
+        break;
+
+      case CURRENT_UNIT == "kg" && TARGET_UNIT == "lb":
+        factor = 2.205;
+        break;
+      case CURRENT_UNIT == "lb" && TARGET_UNIT == "lb":
+        factor = 1;
+        break;
+      case CURRENT_UNIT == "in" && TARGET_UNIT == "in":
+        factor = 1;
+        break;
+      default:
+        factor = 1;
+    }
+    return factor;
   },
 
   voidRepsonseScheme: function (type) {

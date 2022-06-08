@@ -35,6 +35,7 @@ var order = new mongoose.Schema(
     },
 
     sender: {
+      nick_name: String,
       Company: String,
       sender_name: String,
       add1: String,
@@ -46,6 +47,7 @@ var order = new mongoose.Schema(
       phone_number: String,
     },
     recipient: {
+      nick_name: String,
       Company: String,
       recipient_name: String,
       add1: String,
@@ -55,21 +57,27 @@ var order = new mongoose.Schema(
       zipcode: String,
       country: String,
       phone_number: String,
+      is_res: Boolean,
     },
 
     parcel: {
       label: String,
       sku: String,
+      billing_weight: { type: SchemaTypes.Double },
       weight: { type: SchemaTypes.Double },
       isParcels: Boolean,
       parcelList: [
         {
           label: [String],
+          tracking_status: String,
+          pack_type: String,
           sku: String,
           weight: { type: SchemaTypes.Double },
           length: { type: SchemaTypes.Double },
           width: { type: SchemaTypes.Double },
           height: { type: SchemaTypes.Double },
+          reference_1: String,
+          reference_2: String,
           tracking_numbers: [String],
           transfer_number: String,
           postage: {
